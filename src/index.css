@@ -1,0 +1,28 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@400;500;600;700;800;900&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", system-ui, sans-serif;
+  --font-display: "Outfit", system-ui, sans-serif;
+}
+
+/* Prevent layout shift (shaking/jumping) when vertical scrollbar appears or disappears during navigation */
+html, 
+body,
+#skoola-fullstack-app,
+main,
+.overflow-y-auto {
+  scrollbar-gutter: stable;
+}
+
+/* Isolate animated elements inside GPU compositing layers to prevent sub-pixel layout jitter and text blurring */
+.animate-pulse, 
+.animate-ping, 
+.animate-spin,
+.animate-bounce {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  transform: translate3d(0, 0, 0);
+  -webkit-transform: translate3d(0, 0, 0);
+  will-change: opacity, transform;
+}

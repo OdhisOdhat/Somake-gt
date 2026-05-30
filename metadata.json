@@ -1,0 +1,6 @@
+{
+  "name": "Somake School ERP & Learning Platform",
+  "description": "Multi-curriculum (CBE & Cambridge) educational administration portal featuring automated Kenya National CBE grading, LMS, student welfare, active offline-first state synchronization, and Gemini AI reporting remarks.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
