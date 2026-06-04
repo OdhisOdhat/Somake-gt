@@ -25,6 +25,7 @@ import {
   CurriculumType
 } from '../types';
 import NoSchoolSelected from './NoSchoolSelected';
+import { useAppContext } from '../context/AppContext';
 
 interface ClassesTabProps {
   activeSchoolId: string;
@@ -60,6 +61,11 @@ export default function ClassesTab({
   onAddDormWelfareLog
 }: ClassesTabProps) {
   const activeSchool = schools.find(s => s.id === activeSchoolId);
+  const { userRole, showToast } = useAppContext();
+
+  if (!activeSchoolId || !activeSchool) {
+    return <NoSchoolSelected title="Select a school profile" />;
+  }
 
   // Local interaction states
   const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
@@ -68,6 +74,24 @@ export default function ClassesTab({
   const [newMatSubject, setNewMatSubject] = useState('');
   const [newMatType, setNewMatType] = useState<'Note' | 'Assignment' | 'Quiz'>('Assignment');
   const [newMatContent, setNewMatContent] = useState('');
+  const [newMatImage, setNewMatImage] = useState<string>('');
+  const [isDragging, setIsDragging] = useState(false);
+  const [viewingImage, setViewingImage] = useState<string | null>(null);
+  const [filterSnapshotOnly, setFilterSnapshotOnly] = useState(false);
+
+  const handleImageFile = (file: File) => {
+    if (!file.type.startsWith('image/')) {
+      alert('Please select an image file (PNG, JPG, JPEG, WEBP).');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        setNewMatImage(reader.result);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
 
   // Homework simulator states
   const [homeworkReviewId, setHomeworkReviewId] = useState<string | null>(null);
@@ -95,11 +119,21 @@ export default function ClassesTab({
 
           <button
             id="btn-classes-add-class"
-            onClick={onAddClass}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-4.5 py-2.5 rounded-xl shadow-sm transition-all flex items-center gap-1.5 self-start sm:self-auto"
+            onClick={() => {
+              if (userRole !== 'super_admin') {
+                showToast("Access Restricted: Creating new school classroom divisions requires Super Administrator credentials.", "error");
+                return;
+              }
+              onAddClass();
+            }}
+            className={`font-bold text-xs px-4.5 py-2.5 rounded-xl shadow-sm transition-all flex items-center gap-1.5 self-start sm:self-auto ${
+              userRole !== 'super_admin'
+                ? 'bg-slate-100 border border-slate-200 text-slate-400 cursor-not-allowed font-bold'
+                : 'bg-indigo-600 hover:bg-indigo-700 text-white'
+            }`}
           >
             <Plus className="w-4 h-4 stroke-[2.2]" />
-            New classroom
+            New classroom {userRole !== 'super_admin' && '🔒'}
           </button>
         </div>
 
@@ -178,11 +212,13 @@ export default function ClassesTab({
                   subject: newMatSubject,
                   type: newMatType,
                   content: newMatContent,
+                  imageUrl: newMatImage,
                   curriculum: (activeSchool?.curriculum ?? 'CBE').includes('CBE') ? 'CBE' : 'Cambridge'
                 });
                 setNewMatTitle('');
                 setNewMatSubject('');
                 setNewMatContent('');
+                setNewMatImage('');
                 setShowMaterialForm(false);
               }}
               className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-3.5 text-xs text-slate-750"
@@ -198,7 +234,7 @@ export default function ClassesTab({
                     placeholder="e.g. Insha Kuhusu Likizo, Physics Exam Set"
                     value={newMatTitle}
                     onChange={e => setNewMatTitle(e.target.value)}
-                    className="w-full p-2.5 border border-slate-200 bg-white rounded-lg focus:border-indigo-500"
+                    className="w-full p-2.5 border border-slate-200 bg-white rounded-lg focus:border-indigo-500 font-semibold"
                   />
                 </div>
                 <div>
@@ -209,7 +245,7 @@ export default function ClassesTab({
                     placeholder="e.g. Mathematics, Science"
                     value={newMatSubject}
                     onChange={e => setNewMatSubject(e.target.value)}
-                    className="w-full p-2.5 border border-slate-200 bg-white rounded-lg focus:border-indigo-500"
+                    className="w-full p-2.5 border border-slate-200 bg-white rounded-lg focus:border-indigo-500 font-semibold"
                   />
                 </div>
                 <div>
@@ -217,7 +253,7 @@ export default function ClassesTab({
                   <select
                     value={newMatType}
                     onChange={e => setNewMatType(e.target.value as any)}
-                    className="w-full p-2.5 border border-slate-200 bg-white rounded-lg focus:border-indigo-500"
+                    className="w-full p-2.5 border border-slate-200 bg-white rounded-lg focus:border-indigo-500 font-bold"
                   >
                     <option value="Assignment">Assignment Homework</option>
                     <option value="Note">Notes Reading</option>
@@ -234,6 +270,77 @@ export default function ClassesTab({
                     className="w-full p-2.5 border border-slate-200 bg-white rounded-lg focus:border-indigo-500 font-medium"
                   />
                 </div>
+
+                {/* Photo uploader with fully functional drag-and-drop & manual file selection */}
+                <div className="col-span-2">
+                  <label className="text-[10px] uppercase font-black text-slate-500 block mb-1">
+                    📷 Homework of the Day Blackboard / Text Snapshot (Optional)
+                  </label>
+                  <p className="text-[10px] text-slate-400 mb-2 font-medium">
+                    Upload a high-fidelity image of handwritten homework on the board or a printed test worksheet for pupils to read.
+                  </p>
+                  
+                  {newMatImage ? (
+                    <div className="relative border border-dashed border-indigo-200 rounded-xl p-3 bg-indigo-50/10 flex flex-col items-center justify-center space-y-2">
+                      <img 
+                        src={newMatImage} 
+                        alt="Snapshot Preview" 
+                        referrerPolicy="no-referrer"
+                        className="max-h-40 rounded-lg object-contain shadow-sm border border-slate-200"
+                      />
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setNewMatImage('')}
+                          className="bg-rose-50 hover:bg-rose-100 text-rose-600 text-[10px] font-bold px-3 py-1.5 rounded-lg transition-all flex items-center gap-1 border border-rose-100"
+                        >
+                          <X className="w-3.5 h-3.5" /> Remove Attachment
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        setIsDragging(true);
+                      }}
+                      onDragLeave={() => setIsDragging(false)}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        setIsDragging(false);
+                        if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+                          handleImageFile(e.dataTransfer.files[0]);
+                        }
+                      }}
+                      onClick={() => {
+                        const fileInput = document.getElementById('homework-photo-input');
+                        if (fileInput) fileInput.click();
+                      }}
+                      className={`border-2 border-dashed rounded-xl p-6 flex flex-col items-center justify-center text-center cursor-pointer transition-all ${
+                        isDragging 
+                          ? 'border-indigo-500 bg-indigo-50/30' 
+                          : 'border-slate-200 bg-white hover:border-slate-350 hover:bg-slate-50/20'
+                      }`}
+                    >
+                      <input 
+                        type="file" 
+                        id="homework-photo-input"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          if (e.target.files && e.target.files[0]) {
+                            handleImageFile(e.target.files[0]);
+                          }
+                        }}
+                      />
+                      <Sparkles className="w-5 h-5 text-indigo-500 mb-2 animate-pulse" />
+                      <p className="text-xs font-bold text-slate-700">
+                        Drag & Drop or <span className="text-indigo-600 hover:underline">Click to upload</span> a whiteboard snapshot
+                      </p>
+                      <p className="text-[10px] text-slate-400 mt-1 font-medium">Supports JPG, PNG, WEBP, GIF (reads directly as durable Base64)</p>
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div className="flex justify-end pt-1">
@@ -247,24 +354,81 @@ export default function ClassesTab({
             </form>
           )}
 
+          {/* Quick Filter tabs for Materials with snapshots */}
+          <div className="flex items-center gap-2 border-b border-slate-100 pb-2 bg-slate-50/50 p-1.5 rounded-lg">
+            <span className="text-[9.5px] uppercase font-mono font-black text-slate-400 mr-2">Filter</span>
+            <button
+              onClick={() => setFilterSnapshotOnly(false)}
+              className={`text-[10px] font-black px-2.5 py-1 rounded-md transition-all ${
+                !filterSnapshotOnly 
+                  ? 'bg-indigo-600 text-white shadow-2xs' 
+                  : 'text-slate-500 hover:bg-slate-200/50'
+              }`}
+            >
+              All Hub ({activeLmsMaterials.length})
+            </button>
+            <button
+              onClick={() => setFilterSnapshotOnly(true)}
+              className={`text-[10px] font-black px-2.5 py-1 rounded-md transition-all flex items-center gap-1 ${
+                filterSnapshotOnly 
+                  ? 'bg-indigo-600 text-white shadow-2xs' 
+                  : 'text-slate-500 hover:bg-slate-200/50'
+              }`}
+            >
+              📷 Classroom Snapshots Only ({activeLmsMaterials.filter(m => m.imageUrl).length})
+            </button>
+          </div>
+
           {/* List of files */}
-          <div className="space-y-3 max-h-[280px] overflow-y-auto pr-1">
-            {activeLmsMaterials.map(mat => (
-              <div key={mat.id} className="p-4 bg-slate-50/50 border border-slate-200 rounded-xl space-y-2">
-                <div className="flex justify-between items-start gap-2">
-                  <div>
-                    <h4 className="text-xs font-black text-slate-900">{mat.title}</h4>
-                    <span className="text-[9.5px] font-black uppercase text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-100 mt-1 inline-block">
-                      Subject: {mat.subject} | {mat.type}
-                    </span>
-                  </div>
-                  <span className="text-[10px] font-mono text-slate-450 font-bold">{mat.assignedDate}</span>
-                </div>
-                <p className="text-[11px] text-slate-600 italic leading-relaxed font-semibold bg-white p-2.5 border border-slate-150 rounded-lg">
-                  "{mat.content}"
-                </p>
+          <div className="space-y-4 max-h-[360px] overflow-y-auto pr-1">
+            {activeLmsMaterials.filter(m => !filterSnapshotOnly || m.imageUrl).length === 0 ? (
+              <div className="text-center py-12 text-[11px] text-slate-400 italic bg-slate-50/30 rounded-xl">
+                No matching classroom materials with this filter.
               </div>
-            ))}
+            ) : (
+              activeLmsMaterials
+                .filter(m => !filterSnapshotOnly || m.imageUrl)
+                .map(mat => (
+                  <div key={mat.id} className="p-4 bg-slate-50/40 border border-slate-200 rounded-xl space-y-3 hover:border-slate-300 transition-all">
+                    <div className="flex justify-between items-start gap-2">
+                      <div>
+                        <h4 className="text-xs font-black text-slate-900 flex items-center gap-1.5">
+                          {mat.title}
+                          {mat.imageUrl && (
+                            <span className="bg-emerald-50 text-emerald-700 text-[8.5px] font-extrabold px-1.5 py-0.5 rounded border border-emerald-100 uppercase tracking-wider flex items-center gap-0.5">
+                              📷 snapshot
+                            </span>
+                          )}
+                        </h4>
+                        <span className="text-[9.5px] font-black uppercase text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-100 mt-1.5 inline-block">
+                          Subject: {mat.subject} | {mat.type}
+                        </span>
+                      </div>
+                      <span className="text-[10px] font-mono text-slate-400 font-bold">{mat.assignedDate}</span>
+                    </div>
+                    {mat.content && (
+                      <p className="text-[11px] text-slate-600 italic leading-relaxed font-semibold bg-white p-2.5 border border-slate-150 rounded-lg">
+                        "{mat.content}"
+                      </p>
+                    )}
+
+                    {/* Render attachment block if exist */}
+                    {mat.imageUrl && (
+                      <div className="relative group overflow-hidden border border-slate-200 rounded-lg bg-slate-100 max-h-48 flex justify-center items-center shadow-3xs cursor-pointer">
+                        <img 
+                          src={mat.imageUrl} 
+                          alt="Homework Snapshot" 
+                          referrerPolicy="no-referrer"
+                          className="w-full max-h-48 object-cover group-hover:scale-101 transition-all"
+                        />
+                        <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1 text-white text-[10px] font-bold">
+                          <Sparkles className="w-3.5 h-3.5 animate-bounce text-indigo-300" /> Click to read & enlarge homework photo
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))
+            )}
           </div>
         </div>
 
@@ -474,6 +638,57 @@ export default function ClassesTab({
         </div>
 
       </div>
+
+      {/* Lightbox / Immersive Fullscreen Image Viewer Modal */}
+      {viewingImage && (
+        <div 
+          className="fixed inset-0 bg-slate-950/95 backdrop-blur-md z-50 flex flex-col items-center justify-center p-4 md:p-8 animate-fade-in"
+          onClick={() => setViewingImage(null)}
+        >
+          <div className="absolute top-4 right-4 flex items-center gap-3">
+            <button
+              onClick={() => {
+                const link = document.createElement('a');
+                link.href = viewingImage;
+                link.download = 'homework-of-the-day-snapshot.png';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+              }}
+              className="bg-white/10 hover:bg-white/20 text-white font-black text-xs px-3.5 py-2 rounded-xl transition-all border border-white/10 shadow-sm"
+              title="Download Snapshot image"
+            >
+              Download Photo
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setViewingImage(null);
+              }}
+              className="bg-white/10 hover:bg-white/20 text-white p-2 rounded-xl border border-white/10 transition-all font-black"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+          
+          <div 
+            className="w-full max-w-4xl max-h-[80vh] flex items-center justify-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <img 
+              src={viewingImage} 
+              alt="Homework full resolution snapshot" 
+              referrerPolicy="no-referrer"
+              className="max-w-full max-h-[75vh] object-contain rounded-2xl shadow-2xl border border-white/15"
+            />
+          </div>
+          
+          <div className="text-center mt-4 max-w-md">
+            <h4 className="text-white font-extrabold text-sm flex items-center justify-center gap-1.5"><Sparkles className="w-4 h-4 text-indigo-400" /> Classroom Whiteboard / Workbook Photograph</h4>
+            <p className="text-indigo-200 text-xs mt-1 leading-normal font-semibold">Pupils: review and complete instructions into your homework journals. Press anywhere outside or click Esc/cross to dismiss.</p>
+          </div>
+        </div>
+      )}
 
     </div>
   );

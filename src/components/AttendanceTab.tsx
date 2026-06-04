@@ -19,6 +19,11 @@ export default function AttendanceTab({
   onMarkAttendance
 }: AttendanceTabProps) {
   const activeSchool = schools.find(s => s.id === activeSchoolId);
+
+  if (!activeSchoolId || !activeSchool) {
+    return <NoSchoolSelected title="Select a school profile" />;
+  }
+
   const activeDate = '2026-05-28'; // Today's date default
 
   // Filter students to active school

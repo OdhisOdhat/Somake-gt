@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   BarChart3, 
   Building, 
@@ -10,9 +11,13 @@ import {
   GraduationCap, 
   ChevronDown, 
   Plus, 
-  LogOut 
+  LogOut,
+  Lock,
+  Sun,
+  Moon
 } from 'lucide-react';
 import { School } from '../types';
+import { useAppContext } from '../context/AppContext';
 
 interface SkoolaSidebarProps {
   schools: School[];
@@ -35,6 +40,8 @@ export default function SkoolaSidebar({
   userEmail,
   onSignOut
 }: SkoolaSidebarProps) {
+  const navigate = useNavigate();
+  const { userRole, showToast, darkMode, toggleDarkMode } = useAppContext();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const activeSchool = schools.find(s => s.id === activeSchoolId);
 
@@ -48,6 +55,17 @@ export default function SkoolaSidebar({
     { id: 'fees', label: 'Fees', icon: Coins }
   ] as const;
 
+  const isTabLocked = (tabId: string) => {
+    if (userRole === 'super_admin') return false;
+    if (userRole === 'teacher') {
+      return ['schools', 'staff', 'fees'].includes(tabId);
+    }
+    if (userRole === 'parent_student') {
+      return ['schools', 'students', 'staff', 'attendance'].includes(tabId);
+    }
+    return false;
+  };
+
   return (
     <aside id="skoola-main-sidebar" className="w-64 bg-white border-r border-slate-200 flex flex-col h-screen sticky top-0 shrink-0 select-none">
       {/* Brand Logo Header */}
@@ -55,7 +73,7 @@ export default function SkoolaSidebar({
         <div className="bg-indigo-600 text-white p-2 rounded-xl flex items-center justify-center shadow-md">
           <GraduationCap className="w-5 h-5 line-clamp-1" />
         </div>
-        <span className="text-xl font-extrabold text-[#1e1b4b] tracking-tight">Skoola</span>
+        <span className="text-xl font-extrabold text-slate-900 tracking-tight">Skoola</span>
       </div>
 
       {/* Selector Dropdown Container */}
@@ -88,8 +106,7 @@ export default function SkoolaSidebar({
                     onClick={() => {
                       setActiveSchoolId(sch.id);
                       setDropdownOpen(false);
-                      // Auto route to dashboard on selection
-                      setActiveTab('dashboard');
+                      navigate(`/${sch.id}/dashboard`);
                     }}
                     className={`w-full text-left px-3 py-2 text-xs font-medium transition-colors ${
                       sch.id === activeSchoolId
@@ -125,33 +142,69 @@ export default function SkoolaSidebar({
         {navItems.map(item => {
           const Icon = item.icon;
           const isSelected = activeTab === item.id;
+          const locked = isTabLocked(item.id);
           return (
             <button
               key={item.id}
               id={`nav-item-${item.id}`}
-              onClick={() => setActiveTab(item.id)}
-              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all ${
-                isSelected
-                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-100'
-                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+              onClick={() => {
+                if (locked) {
+                  showToast(`Access Restricted: [${item.label}] requires elevated ${userRole === 'teacher' ? 'Super Administrator' : 'Staff'} privileges.`, 'error');
+                  return;
+                }
+                navigate(`/${activeSchoolId || 'none'}/${item.id}`);
+              }}
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all ${
+                locked
+                  ? 'opacity-40 cursor-not-allowed text-slate-400 bg-slate-50/50'
+                  : isSelected
+                    ? 'bg-indigo-600 text-white shadow-md shadow-indigo-100'
+                    : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
               }`}
+              disabled={false} // Click handler handles showing the error alert to tell the user what's happening
             >
-              <Icon className={`w-4 h-4 ${isSelected ? 'text-white' : 'text-slate-400'}`} />
-              <span>{item.label}</span>
+              <div className="flex items-center gap-3 truncate">
+                <Icon className={`w-4 h-4 shrink-0 ${locked ? 'text-slate-350' : isSelected ? 'text-white' : 'text-slate-400'}`} />
+                <span>{item.label}</span>
+              </div>
+              {locked && <Lock className="w-3 h-3 text-slate-400 shrink-0 ml-1" />}
             </button>
           );
         })}
       </nav>
 
       {/* Bottom Profile Account bar */}
-      <div className="p-4 border-t border-slate-100 bg-slate-50/50">
-        <div className="truncate text-xs font-bold text-slate-700 tracking-tight">
-          {userEmail}
+      <div className="p-4 border-t border-slate-100 bg-slate-50/50 space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="truncate text-xs font-bold text-slate-700 tracking-tight pr-2">
+            {userEmail}
+          </div>
+          
+          {/* Theme Toggle Button */}
+          <button
+            id="theme-toggle-btn"
+            onClick={toggleDarkMode}
+            title={darkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
+            className="p-1.5 px-2 rounded-xl bg-white border border-slate-200 hover:border-slate-350 hover:bg-slate-100 text-slate-500 hover:text-slate-800 transition-all shadow-xs cursor-pointer flex items-center gap-1.5"
+          >
+            {darkMode ? (
+              <>
+                <Sun className="w-3.5 h-3.5 text-amber-505 shrink-0" />
+                <span className="text-[10px] pr-0.5">Light</span>
+              </>
+            ) : (
+              <>
+                <Moon className="w-3.5 h-3.5 text-slate-700 shrink-0 font-bold" />
+                <span className="text-[10px] pr-0.5 text-slate-700">Dark</span>
+              </>
+            )}
+          </button>
         </div>
+        
         <button
           id="btn-sidebar-signout"
           onClick={onSignOut}
-          className="mt-2.5 w-full flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 hover:border-slate-300 hover:bg-slate-50 rounded-lg text-[11px] font-bold text-slate-500 hover:text-slate-700 transition-all shadow-sm"
+          className="w-full flex items-center justify-center gap-2 px-3 py-1.5 bg-white border border-slate-200 hover:border-slate-300 hover:bg-slate-50 rounded-lg text-[11px] font-bold text-slate-550 hover:text-slate-700 transition-all shadow-sm"
         >
           <LogOut className="w-3.5 h-3.5" />
           <span>Sign out</span>

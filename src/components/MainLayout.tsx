@@ -1,9 +1,15 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   X, 
   Lock, 
   AlertCircle, 
-  Check 
+  Check,
+  User,
+  Mail,
+  School,
+  ShieldAlert,
+  ShieldCheck,
+  ArrowRight
 } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 
@@ -24,6 +30,14 @@ export default function MainLayout() {
     isSignedOut, setIsSignedOut,
     signInPassword, setSignInPassword,
     userEmail,
+    userRole, setUserRole,
+    selectedTeacherId, setSelectedTeacherId,
+    selectedStudentId, setSelectedStudentId,
+    currentUser,
+    handleLogin,
+    handleSignup,
+    handleSignOut,
+    handleLinkStaffToSchool,
     activeSchoolId, setActiveSchoolId,
     activeTab, setActiveTab,
     showSchoolModal, setShowSchoolModal,
@@ -55,38 +69,244 @@ export default function MainLayout() {
     handleGenerateAiComment
   } = useAppContext();
 
+  // Authentication UI local states
+  const [authTab, setAuthTab] = useState<'signin' | 'signup'>('signin');
+  const [loginEmail, setLoginEmail] = useState<string>('');
+  const [loginPassword, setLoginPassword] = useState<string>('');
+
+  const [signupForm, setSignupForm] = useState({
+    name: '',
+    email: '',
+    password: '',
+    role: 'teacher' as 'super_admin' | 'teacher' | 'parent_student',
+    schoolId: ''
+  });
+
+  const onLoginSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!loginEmail || !loginPassword) {
+      showToast('Please enter both email and password', 'error');
+      return;
+    }
+    const success = await handleLogin(loginEmail, loginPassword);
+    if (success) {
+      setLoginEmail('');
+      setLoginPassword('');
+    }
+  };
+
+  const onSignupSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const { name, email, password, role, schoolId } = signupForm;
+    if (!name || !email || !password || !role) {
+      showToast('Please fill in all required signup fields', 'error');
+      return;
+    }
+    if ((role === 'teacher' || role === 'parent_student') && !schoolId) {
+      showToast('Please link this account to a specific school', 'error');
+      return;
+    }
+
+    const success = await handleSignup({ name, email, password, role, schoolId });
+    if (success) {
+      setSignupForm({
+        name: '',
+        email: '',
+        password: '',
+        role: 'teacher',
+        schoolId: ''
+      });
+    }
+  };
+
   // If Session Admin Locks are active, show secure lock-gate
   if (isSignedOut) {
     return (
-      <div id="skoola-lockscreen" className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
-        <div className="bg-white border border-slate-850 rounded-3xl p-6 md:p-8 max-w-sm w-full shadow-2xl space-y-5 text-center">
-          <div className="mx-auto bg-indigo-50 text-indigo-600 p-4 rounded-full w-16 h-16 flex items-center justify-center shadow-inner">
-            <Lock className="w-7 h-7 stroke-[2.2]" />
-          </div>
-          <div>
-            <h2 className="text-xl font-black text-slate-900">Skoola Terminal</h2>
-            <p className="text-xs text-slate-500 mt-0.5">Session locked for: {userEmail}</p>
+      <div id="skoola-lockscreen" className="min-h-screen bg-slate-900 flex items-center justify-center p-4 selection:bg-indigo-500 selection:text-white">
+        <div className="bg-white border border-slate-100 rounded-3xl p-6 md:p-8 max-w-md w-full shadow-2xl space-y-6">
+          <div className="text-center space-y-2">
+            <div className="mx-auto bg-indigo-50 text-indigo-600 p-4 rounded-full w-14 h-14 flex items-center justify-center shadow-inner">
+              <Lock className="w-6 h-6 stroke-[2.2]" />
+            </div>
+            <h2 className="text-lg font-black text-slate-900 tracking-tight">Skoola Boarding & Academics Portal</h2>
+            <p className="text-[11px] text-slate-400 font-semibold leading-normal">
+              Enter your credential logs or create a new school identity workspace to start boarding.
+            </p>
           </div>
 
-          <div className="space-y-3.5">
-            <input 
-              type="password"
-              placeholder="Enter password (any to unlock)..."
-              value={signInPassword}
-              onChange={e => setSignInPassword(e.target.value)}
-              className="w-full text-xs p-3 border border-slate-200 focus:border-indigo-500 rounded-xl focus:outline-none focus:ring-1 focus:ring-indigo-500 text-center font-bold"
-            />
+          {/* Authentication tabs toggles */}
+          <div className="flex border-b border-slate-100 p-1 bg-slate-50/80 rounded-2xl">
+            <button
+              onClick={() => setAuthTab('signin')}
+              className={`flex-1 text-center py-2 text-xs font-bold rounded-xl transition-all ${
+                authTab === 'signin'
+                  ? 'bg-white text-indigo-700 shadow-sm border border-slate-100'
+                  : 'text-slate-500 hover:text-slate-900'
+              }`}
+            >
+              Portal Sign In
+            </button>
             <button
               onClick={() => {
-                setIsSignedOut(false);
-                setSignInPassword('');
-                showToast('Welcome back, School Admin!');
+                setAuthTab('signup');
+                // Auto prefill current school if available on signup tab click
+                if (schools.length > 0 && !signupForm.schoolId) {
+                  setSignupForm(prev => ({ ...prev, schoolId: schools[0].id }));
+                }
               }}
-              className="w-full bg-indigo-600 hover:bg-slate-905 text-white font-bold text-xs py-3 rounded-xl transition-all shadow-sm"
+              className={`flex-1 text-center py-2 text-xs font-bold rounded-xl transition-all ${
+                authTab === 'signup'
+                  ? 'bg-white text-indigo-700 shadow-sm border border-slate-100'
+                  : 'text-slate-500 hover:text-slate-900'
+              }`}
             >
-              Sign back in
+              Create Account
             </button>
           </div>
+
+          {authTab === 'signin' ? (
+            <form onSubmit={onLoginSubmit} className="space-y-4">
+              <div className="space-y-1">
+                <label className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Email Address</label>
+                <div className="relative">
+                  <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <input 
+                    type="email"
+                    placeholder="Enter email e.g. principal@school.com"
+                    value={loginEmail}
+                    onChange={e => setLoginEmail(e.target.value)}
+                    className="w-full text-xs pl-10 pr-4 py-3 border border-slate-200 focus:border-indigo-500 rounded-xl focus:outline-none focus:ring-1 focus:ring-indigo-500 font-semibold text-slate-800 bg-slate-50/20"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Security Password</label>
+                <div className="relative">
+                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <input 
+                    type="password"
+                    placeholder="Enter administrative password..."
+                    value={loginPassword}
+                    onChange={e => setLoginPassword(e.target.value)}
+                    className="w-full text-xs pl-10 pr-4 py-3 border border-slate-200 focus:border-indigo-500 rounded-xl focus:outline-none focus:ring-1 focus:ring-indigo-500 font-semibold text-slate-800 bg-slate-50/20"
+                  />
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs py-3.5 rounded-xl transition-all shadow-sm flex items-center justify-center gap-2"
+              >
+                Sign In to Workspace
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+
+              <div className="bg-indigo-50/50 rounded-2xl border border-indigo-100/50 p-3.5 space-y-1.5 text-left">
+                <h4 className="text-[10px] font-black text-indigo-800 flex items-center gap-1.5 uppercase tracking-wider">
+                  <ShieldCheck className="w-3.5 h-3.5 text-indigo-500" /> Administrative Demo Profile
+                </h4>
+                <p className="text-[9.5px] leading-relaxed text-slate-500 font-semibold">
+                  Use the following credentials to access the prefilled system administrator dashboard:
+                </p>
+                <div className="flex items-center justify-between text-[10px] font-mono font-bold bg-white/80 p-2 rounded-lg border border-slate-100">
+                  <span className="text-slate-600">suppliesosubuko@gmail.com</span>
+                  <span className="text-emerald-700">admin123</span>
+                </div>
+              </div>
+            </form>
+          ) : (
+            <form onSubmit={onSignupSubmit} className="space-y-4 text-left">
+              <div className="space-y-1">
+                <label className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Full Name</label>
+                <div className="relative">
+                  <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <input 
+                    type="text"
+                    required
+                    placeholder="e.g. Principal Charles Carter"
+                    value={signupForm.name}
+                    onChange={e => setSignupForm(prev => ({ ...prev, name: e.target.value }))}
+                    className="w-full text-xs pl-10 pr-4 py-3 border border-slate-200 focus:border-indigo-500 rounded-xl focus:outline-none focus:ring-1 focus:ring-indigo-500 font-semibold text-slate-800"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Email Address</label>
+                <div className="relative">
+                  <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <input 
+                    type="email"
+                    required
+                    placeholder="e.g. charles@school.com"
+                    value={signupForm.email}
+                    onChange={e => setSignupForm(prev => ({ ...prev, email: e.target.value }))}
+                    className="w-full text-xs pl-10 pr-4 py-3 border border-slate-200 focus:border-indigo-500 rounded-xl focus:outline-none focus:ring-1 focus:ring-indigo-500 font-semibold text-slate-800"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Password</label>
+                <div className="relative">
+                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <input 
+                    type="password"
+                    required
+                    placeholder="Create a strong password..."
+                    value={signupForm.password}
+                    onChange={e => setSignupForm(prev => ({ ...prev, password: e.target.value }))}
+                    className="w-full text-xs pl-10 pr-4 py-3 border border-slate-200 focus:border-indigo-500 rounded-xl focus:outline-none focus:ring-1 focus:ring-indigo-500 font-semibold text-slate-800"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Your Portal Role</label>
+                <select
+                  value={signupForm.role}
+                  onChange={e => setSignupForm(prev => ({ ...prev, role: e.target.value as any }))}
+                  className="w-full text-xs p-3 border border-slate-200 focus:border-indigo-500 rounded-xl focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-white font-semibold text-slate-800"
+                >
+                  <option value="super_admin">Super Administrator (Full System access)</option>
+                  <option value="teacher">Teacher / Educator (Linked to specific school)</option>
+                  <option value="parent_student">Parent or Student Viewer (Linked to specific school)</option>
+                </select>
+              </div>
+
+              {/* Conditional link user of roles "teacher" and "parent_student" to specific schools */}
+              {(signupForm.role === 'teacher' || signupForm.role === 'parent_student') && (
+                <div className="space-y-1 p-3.5 bg-slate-50 border border-slate-150 rounded-2xl">
+                  <label className="text-[10px] font-extrabold uppercase text-indigo-700 flex items-center gap-1">
+                    <School className="w-3.5 h-3.5 text-indigo-500" /> Link to specific school profile
+                  </label>
+                  <select
+                    required
+                    value={signupForm.schoolId}
+                    onChange={e => setSignupForm(prev => ({ ...prev, schoolId: e.target.value }))}
+                    className="w-full text-xs p-2.5 mt-1.5 border border-slate-200 focus:border-indigo-500 rounded-xl focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-white font-semibold text-slate-800"
+                  >
+                    <option value="" disabled>-- Select School to Link --</option>
+                    {schools.map(school => (
+                      <option key={school.id} value={school.id}>{school.name}</option>
+                    ))}
+                  </select>
+                  <p className="text-[9.5px] text-slate-400 mt-1.5 leading-normal">
+                    This dynamically authorizes your record inside the selected educational ecosystem directory.
+                  </p>
+                </div>
+              )}
+
+              <button
+                type="submit"
+                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs py-3.5 rounded-xl transition-all shadow-sm flex items-center justify-center gap-2 mt-2"
+              >
+                Register & Initialize Account
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            </form>
+          )}
         </div>
       </div>
     );
@@ -119,14 +339,116 @@ export default function MainLayout() {
         setActiveTab={setActiveTab}
         onNewSchoolClick={() => setShowSchoolModal(true)}
         userEmail={userEmail}
-        onSignOut={() => {
-          setIsSignedOut(true);
-          showToast('Session locks secured successfully!', 'info');
-        }}
+        onSignOut={handleSignOut}
       />
 
       {/* Main Workspace Frame */}
       <main className="flex-1 flex flex-col h-full overflow-y-scroll overflow-x-hidden pt-6">
+        
+        {/* Active Session & Role impersonation Switcher */}
+        <div className="px-6 md:px-8 mb-6">
+          <div className="bg-slate-900 text-white rounded-2xl p-4 md:p-5 shadow-lg border border-slate-850 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-emerald-450 animate-pulse"></span>
+                <span className="text-[10px] tracking-wider uppercase font-extrabold text-slate-400">Security Rights Sandbox Mode</span>
+              </div>
+              <h2 className="text-sm font-black text-white mt-1">Simulated User Persona</h2>
+              <p className="text-[10px] text-slate-400 font-medium">Verify how roles restrict screens, forms, dashboard metrics & read/write capabilities.</p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                onClick={() => {
+                  setUserRole('super_admin');
+                  showToast('Provisioned Principal / Super-Admin Role (Unrestricted read/write)');
+                }}
+                className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all ${
+                  userRole === 'super_admin'
+                    ? 'bg-indigo-600 text-white shadow-md font-extrabold'
+                    : 'bg-[#1e293b] text-slate-300 hover:bg-[#2e3e56]'
+                }`}
+              >
+                👑 School Principal
+              </button>
+              <button
+                onClick={() => {
+                  setUserRole('teacher');
+                  showToast('Activating Classroom Staff credentials (Limited visibility)');
+                }}
+                className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all ${
+                  userRole === 'teacher'
+                    ? 'bg-indigo-600 text-white shadow-md font-extrabold'
+                    : 'bg-[#1e293b] text-slate-300 hover:bg-[#2e3e56]'
+                }`}
+              >
+                🧑‍🏫 Classroom Teacher
+              </button>
+              <button
+                onClick={() => {
+                  setUserRole('parent_student');
+                  // Switch the sidebar tab to dashboard if activeTab is not compatible
+                  if (['schools', 'students', 'staff', 'attendance'].includes(activeTab)) {
+                    setActiveTab('dashboard');
+                  }
+                  showToast('Activating Parent & Student portal');
+                }}
+                className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all ${
+                  userRole === 'parent_student'
+                    ? 'bg-indigo-600 text-white shadow-md font-extrabold'
+                    : 'bg-[#1e293b] text-slate-300 hover:bg-[#2e3e56]'
+                }`}
+              >
+                🏡 Parent / Student
+              </button>
+            </div>
+          </div>
+
+          {/* Conditional Role-selector Dropdowns */}
+          {userRole === 'teacher' && (
+            <div className="mt-3 bg-white border border-slate-200 p-3 rounded-xl shadow-xs flex flex-wrap items-center justify-between gap-3 text-xs">
+              <div className="flex items-center gap-2">
+                <span className="p-1 px-2 rounded-lg bg-indigo-50 text-indigo-700 font-black text-[10px] uppercase border border-indigo-100">Active Staff</span>
+                <span className="text-slate-500 font-bold">Acting Teacher credentials for:</span>
+              </div>
+              <select
+                value={selectedTeacherId}
+                onChange={(e) => {
+                  setSelectedTeacherId(e.target.value);
+                  const s = staff.find(st => st.id === e.target.value);
+                  showToast(`Acting as Teacher ${s?.name || ''}`);
+                }}
+                className="p-1.5 border border-slate-200 bg-[#f8fafc] rounded-lg font-black text-xs text-slate-800 focus:outline-none focus:border-indigo-500 cursor-pointer"
+              >
+                {staff.map(st => (
+                  <option key={st.id} value={st.id}>{st.name} ({st.role})</option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {userRole === 'parent_student' && (
+            <div className="mt-3 bg-white border border-slate-200 p-3 rounded-xl shadow-xs flex flex-wrap items-center justify-between gap-3 text-xs">
+              <div className="flex items-center gap-2">
+                <span className="p-1 px-2 rounded-lg bg-emerald-50 text-emerald-700 font-black text-[10px] uppercase border border-emerald-100">Portal Pupil</span>
+                <span className="text-slate-500 font-bold">Simulating Student & Parent view for:</span>
+              </div>
+              <select
+                value={selectedStudentId}
+                onChange={(e) => {
+                  setSelectedStudentId(e.target.value);
+                  const s = students.find(st => st.id === e.target.value);
+                  showToast(`Simulating Parent of ${s?.name || ''}`);
+                }}
+                className="p-1.5 border border-slate-200 bg-[#f8fafc] rounded-lg font-black text-xs text-slate-800 focus:outline-none focus:border-indigo-500 cursor-pointer"
+              >
+                {students.map(st => (
+                  <option key={st.id} value={st.id}>{st.name} ({st.gradeLevel})</option>
+                ))}
+              </select>
+            </div>
+          )}
+        </div>
         
         {/* Tab content area */}
         <div className="flex-1 px-6 md:px-8 pb-12">
@@ -140,7 +462,11 @@ export default function MainLayout() {
               feeRecords={feeRecords}
               grades={grades}
               attendance={attendance}
+              assessments={assessments}
               onNewSchoolClick={() => setShowSchoolModal(true)}
+              userRole={userRole}
+              selectedTeacherId={selectedTeacherId}
+              selectedStudentId={selectedStudentId}
             />
           )}
 
@@ -176,6 +502,7 @@ export default function MainLayout() {
               staff={staff}
               onAddStaff={() => setShowStaffModal(true)}
               onDeleteStaff={handleDeleteStaff}
+              userRole={userRole}
             />
           )}
 
@@ -524,6 +851,19 @@ export default function MainLayout() {
                   onChange={e => setStaffForm({ ...staffForm, phone: e.target.value })}
                   className="w-full p-2.5 bg-[#f8fafc] border border-slate-200 rounded-xl font-bold"
                 />
+              </div>
+
+              <div>
+                <label className="text-[10px] uppercase font-black text-slate-450 mb-1 block">Assigned School Workspace</label>
+                <select
+                  value={staffForm.schoolId || activeSchoolId}
+                  onChange={e => setStaffForm({ ...staffForm, schoolId: e.target.value })}
+                  className="w-full p-2.5 bg-[#f8fafc] border border-slate-200 rounded-xl font-bold"
+                >
+                  {schools.map(sch => (
+                    <option key={sch.id} value={sch.id}>{sch.name}</option>
+                  ))}
+                </select>
               </div>
 
               <div className="flex justify-end gap-2.5 pt-4 border-t border-slate-100">

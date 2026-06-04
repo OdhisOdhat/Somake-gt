@@ -51,6 +51,17 @@ interface AppContextType {
   signInPassword: string;
   setSignInPassword: (p: string) => void;
   userEmail: string;
+  userRole: 'super_admin' | 'teacher' | 'parent_student';
+  setUserRole: (role: 'super_admin' | 'teacher' | 'parent_student') => void;
+  selectedTeacherId: string;
+  setSelectedTeacherId: (id: string) => void;
+  selectedStudentId: string;
+  setSelectedStudentId: (id: string) => void;
+  currentUser: any;
+  handleLogin: (email: string, password: string) => Promise<boolean>;
+  handleSignup: (userData: any) => Promise<boolean>;
+  handleSignOut: () => void;
+  handleLinkStaffToSchool: (staffId: string, schoolId: string) => Promise<void>;
 
   // Active Context Indicators
   activeSchoolId: string;
@@ -106,6 +117,8 @@ interface AppContextType {
   handleDeleteStaff: (id: string) => Promise<void>;
   handleDeleteSchool: (id: string) => Promise<void>;
   handleGenerateAiComment: (studentId: string) => Promise<string>;
+  darkMode: boolean;
+  toggleDarkMode: () => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -128,9 +141,46 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [busRoutes, setBusRoutes] = useState<BusRoute[]>([]);
 
   // Sign-in Session Admin locks
-  const [isSignedOut, setIsSignedOut] = useState<boolean>(false);
+  const [currentUser, setCurrentUser] = useState<{ email: string; name: string; role: 'super_admin' | 'teacher' | 'parent_student'; schoolId?: string } | null>(() => {
+    try {
+      const saved = localStorage.getItem('skoola-user');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  const [isSignedOut, setIsSignedOut] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem('skoola-user');
+      return !saved;
+    } catch {
+      return true;
+    }
+  });
+
   const [signInPassword, setSignInPassword] = useState<string>('');
-  const [userEmail] = useState<string>('suppliesosubuko@gmail.com');
+  
+  const [userEmail, setUserEmail] = useState<string>(() => {
+    try {
+      const saved = localStorage.getItem('skoola-user');
+      return saved ? JSON.parse(saved).email : 'suppliesosubuko@gmail.com';
+    } catch {
+      return 'suppliesosubuko@gmail.com';
+    }
+  });
+
+  const [userRole, setUserRole] = useState<'super_admin' | 'teacher' | 'parent_student'>(() => {
+    try {
+      const saved = localStorage.getItem('skoola-user');
+      return saved ? JSON.parse(saved).role : 'super_admin';
+    } catch {
+      return 'super_admin';
+    }
+  });
+
+  const [selectedTeacherId, setSelectedTeacherId] = useState<string>('staff-1');
+  const [selectedStudentId, setSelectedStudentId] = useState<string>('1');
 
   // School selectors & navigation trackers
   const [activeSchoolId, setActiveSchoolId] = useState<string>('');
@@ -147,12 +197,34 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // Forms states
   const [schoolForm, setSchoolForm] = useState({ name: '', code: '', curriculum: 'CBE (Kenya)', phone: '', email: '', address: '' });
   const [studentForm, setStudentForm] = useState({ name: '', gender: 'Male' as 'Male' | 'Female', gradeLevel: 'Grade 4', boardingStatus: 'Day' as 'Day' | 'Boarder', dormitoryId: '', busRouteId: '', parentEmail: '', parentPhone: '' });
-  const [staffForm, setStaffForm] = useState({ name: '', role: 'Teacher' as any, email: '', phone: '' });
+  const [staffForm, setStaffForm] = useState({ name: '', role: 'Teacher' as any, email: '', phone: '', schoolId: '' });
   const [classForm, setClassForm] = useState({ name: '', teacherId: '' });
   const [paymentForm, setPaymentForm] = useState({ amount: '', reference: '', date: '2026-05-28' });
 
   // Notifications Alerts states
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'info' | 'error' } | null>(null);
+
+  // Dark mode trigger states
+  const [darkMode, setDarkMode] = useState<boolean>(() => {
+    const saved = localStorage.getItem('skoola-dark-mode');
+    return saved === 'true';
+  });
+
+  const toggleDarkMode = () => {
+    setDarkMode(prev => {
+      const newVal = !prev;
+      localStorage.setItem('skoola-dark-mode', String(newVal));
+      return newVal;
+    });
+  };
+
+  useEffect(() => {
+    if (darkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [darkMode]);
 
   const showToast = (message: string, type: 'success' | 'info' | 'error' = 'success') => {
     setToast({ message, type });
@@ -185,11 +257,131 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setSchoolClasses(data.schoolClasses || []);
       setFeeRecords(data.feeRecords || []);
 
-      if (data.schools && data.schools.length > 0 && !activeSchoolId) {
+      // Auto-configure linked teacher or student context indicators
+      const savedUser = localStorage.getItem('skoola-user');
+      if (savedUser) {
+        const parsed = JSON.parse(savedUser);
+        if (parsed.role === 'teacher') {
+          const matchedStaff = (data.staff || []).find((s: Staff) => s.email && s.email.toLowerCase() === parsed.email.toLowerCase());
+          if (matchedStaff) {
+            setSelectedTeacherId(matchedStaff.id);
+          }
+        } else if (parsed.role === 'parent_student') {
+          const matchedStudent = (data.students || []).find((s: Student) => s.parentEmail && s.parentEmail.toLowerCase() === parsed.email.toLowerCase());
+          if (matchedStudent) {
+            setSelectedStudentId(matchedStudent.id);
+          }
+        }
+        if (parsed.schoolId) {
+          setActiveSchoolId(parsed.schoolId);
+        }
+      } else if (data.schools && data.schools.length > 0 && !activeSchoolId) {
         setActiveSchoolId(data.schools[0].id);
       }
     } catch (e) {
       console.error(e);
+    }
+  };
+
+  const handleLogin = async (email: string, password: string): Promise<boolean> => {
+    try {
+      const resp = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+      if (!resp.ok) {
+        const err = await resp.json();
+        showToast(err.error || 'Authentication failed', 'error');
+        return false;
+      }
+      
+      const data = await resp.json();
+      setCurrentUser(data.user);
+      setUserEmail(data.user.email);
+      setUserRole(data.user.role);
+      setIsSignedOut(false);
+      localStorage.setItem('skoola-user', JSON.stringify(data.user));
+      
+      if (data.user.schoolId) {
+        setActiveSchoolId(data.user.schoolId);
+      }
+      
+      // Auto-link staff / students dynamically based on updated list
+      if (data.user.role === 'teacher') {
+        const matchedStaff = staff.find(s => s.email && s.email.toLowerCase() === email.toLowerCase());
+        if (matchedStaff) setSelectedTeacherId(matchedStaff.id);
+      } else if (data.user.role === 'parent_student') {
+        const matchedStudent = students.find(s => s.parentEmail && s.parentEmail.toLowerCase() === email.toLowerCase());
+        if (matchedStudent) setSelectedStudentId(matchedStudent.id);
+      }
+      
+      showToast(`Welcome back, ${data.user.name || 'User'}!`, 'success');
+      return true;
+    } catch (e) {
+      showToast('Network error during login request.', 'error');
+      return false;
+    }
+  };
+
+  const handleSignup = async (userData: any): Promise<boolean> => {
+    try {
+      const resp = await fetch('/api/auth/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(userData)
+      });
+      if (!resp.ok) {
+        const err = await resp.json();
+        showToast(err.error || 'Registration failed', 'error');
+        return false;
+      }
+      
+      const data = await resp.json();
+      setCurrentUser(data.user);
+      setUserEmail(data.user.email);
+      setUserRole(data.user.role);
+      setIsSignedOut(false);
+      localStorage.setItem('skoola-user', JSON.stringify(data.user));
+      
+      if (data.user.schoolId) {
+        setActiveSchoolId(data.user.schoolId);
+      }
+      
+      await fetchStateFromServer();
+      
+      showToast(`Account successfully created, welcome ${data.user.name || 'User'}!`, 'success');
+      return true;
+    } catch (e) {
+      showToast('Network error during registration request.', 'error');
+      return false;
+    }
+  };
+
+  const handleSignOut = () => {
+    setCurrentUser(null);
+    setUserEmail('');
+    setIsSignedOut(true);
+    localStorage.removeItem('skoola-user');
+    showToast('Successfully signed out of portal.', 'info');
+  };
+
+  const handleLinkStaffToSchool = async (staffId: string, schoolId: string) => {
+    try {
+      const resp = await fetch('/api/staff/link', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ staffId, schoolId })
+      });
+      if (!resp.ok) {
+        const err = await resp.json();
+        throw new Error(err.error || 'Link request failed');
+      }
+      
+      setStaff(prev => prev.map(s => s.id === staffId ? { ...s, schoolId } : s));
+      showToast('Staff member successfully linked to school!', 'success');
+    } catch (err: any) {
+      showToast(err.message || 'Failed to update school linkage', 'error');
     }
   };
 
@@ -277,7 +469,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const handleCreateStaff = (e: React.FormEvent) => {
     e.preventDefault();
     if (!staffForm.name) return;
-    if (!activeSchoolId) {
+    const targetSchoolId = staffForm.schoolId || activeSchoolId;
+    if (!targetSchoolId) {
       showToast('Please create or select a school first to enlist staff!', 'error');
       return;
     }
@@ -285,7 +478,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const staffId = `staff-${staff.length + 101}`;
     const payload = {
       id: staffId,
-      schoolId: activeSchoolId,
+      schoolId: targetSchoolId,
       name: staffForm.name,
       role: staffForm.role,
       email: staffForm.email || 'staff@skoola.edu',
@@ -296,7 +489,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     dispatchActionToServer('create_staff', payload);
     showToast(`Staff member ${staffForm.name} enrolled successfully!`, 'success');
 
-    setStaffForm({ name: '', role: 'Teacher', email: '', phone: '' });
+    setStaffForm({ name: '', role: 'Teacher', email: '', phone: '', schoolId: '' });
     setShowStaffModal(false);
   };
 
@@ -376,7 +569,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       curriculum: materialPayload.curriculum,
       type: materialPayload.type,
       content: materialPayload.content,
-      assignedDate: new Date().toISOString().split('T')[0]
+      assignedDate: new Date().toISOString().split('T')[0],
+      imageUrl: materialPayload.imageUrl || ''
     };
 
     setLmsMaterials(prev => [...prev, fullMat]);
@@ -546,6 +740,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          studentId,
           studentName: selectedStudent.name,
           curriculum: selectedStudent.curriculum,
           gradesList: studGrades,
@@ -579,6 +774,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
       isSignedOut, setIsSignedOut,
       signInPassword, setSignInPassword,
       userEmail,
+      userRole, setUserRole,
+      selectedTeacherId, setSelectedTeacherId,
+      selectedStudentId, setSelectedStudentId,
+      currentUser,
+      handleLogin,
+      handleSignup,
+      handleSignOut,
+      handleLinkStaffToSchool,
       activeSchoolId, setActiveSchoolId,
       activeTab, setActiveTab,
       showSchoolModal, setShowSchoolModal,
@@ -608,7 +811,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       handleDeleteStudent,
       handleDeleteStaff,
       handleDeleteSchool,
-      handleGenerateAiComment
+      handleGenerateAiComment,
+      darkMode,
+      toggleDarkMode
     }}>
       {children}
     </AppContext.Provider>

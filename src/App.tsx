@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { 
   BrowserRouter, 
   Routes, 
@@ -23,25 +23,37 @@ function SyncRouteState() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Sync URL params to global application state
-  useEffect(() => {
-    if (schoolId && schoolId !== 'none' && schoolId !== activeSchoolId) {
-      setActiveSchoolId(schoolId);
-    }
-    if (tabName && tabName !== activeTab) {
-      setActiveTab(tabName as any);
-    }
-  }, [schoolId, tabName, activeSchoolId, activeTab, setActiveSchoolId, setActiveTab]);
+  // Track the last parameters that were actually processed/synced to context state
+  const lastParamsRef = useRef({ schoolId, tabName });
 
-  // Sync state changes in UI context back to dynamic URL path
   useEffect(() => {
-    if (activeSchoolId && activeTab) {
-      const targetQuery = `/${activeSchoolId}/${activeTab}`;
-      if (location.pathname !== targetQuery) {
-        navigate(targetQuery, { replace: true });
+    const urlChanged = 
+      schoolId !== lastParamsRef.current.schoolId || 
+      tabName !== lastParamsRef.current.tabName;
+
+    if (urlChanged) {
+      // URL parameters changed (via side menu clicking or back/forward browser navigation)
+      // Sync URL change DOWN to application context state
+      if (schoolId && schoolId !== 'none' && schoolId !== activeSchoolId) {
+        setActiveSchoolId(schoolId);
+      }
+      if (tabName && tabName !== activeTab) {
+        setActiveTab(tabName as any);
+      }
+      // Update our record of last seen URL params
+      lastParamsRef.current = { schoolId, tabName };
+    } else {
+      // URL parameters did not change. Sync in-app context state changes UP to URL path.
+      if (activeSchoolId && activeTab) {
+        const targetQuery = `/${activeSchoolId}/${activeTab}`;
+        if (location.pathname !== targetQuery) {
+          navigate(targetQuery, { replace: true });
+          // Update our record of last seen URL params to match what we just outputted
+          lastParamsRef.current = { schoolId: activeSchoolId, tabName: activeTab };
+        }
       }
     }
-  }, [activeSchoolId, activeTab, navigate, location.pathname]);
+  }, [schoolId, tabName, activeSchoolId, activeTab, navigate, location.pathname, setActiveSchoolId, setActiveTab]);
 
   return null;
 }

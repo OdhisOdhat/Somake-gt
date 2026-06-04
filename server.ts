@@ -20,7 +20,8 @@ import {
   SchoolClass, 
   FeeRecord 
 } from './src/types';
-import { loadDatabase, saveDatabase, getDb } from './server/db';
+import { loadDatabase, saveDatabase, getDb, pool } from './server/db';
+import { generatePersonalizedRemark } from './server/geminiService';
 
 dotenv.config();
 
@@ -28,9 +29,6 @@ const app = express();
 const PORT = 3000;
 
 app.use(express.json());
-
-// Boot active persistent database
-loadDatabase();
 
 // Lazy Gemini Initialization Helper
 let geminiClientCache: GoogleGenAI | null = null;
@@ -76,7 +74,7 @@ app.get('/api/state', (req, res) => {
 });
 
 // Sync changes endpoint
-app.post('/api/sync', (req, res) => {
+app.post('/api/sync', async (req, res) => {
   const actions: OfflineAction[] = req.body.actions || [];
   console.log(`Received ${actions.length} offline actions for sync.`);
 
@@ -180,7 +178,8 @@ app.post('/api/sync', (req, res) => {
             type: payload.type,
             content: payload.content,
             assignedDate: payload.assignedDate || new Date().toISOString().split('T')[0],
-            dueDate: payload.dueDate
+            dueDate: payload.dueDate,
+            imageUrl: payload.imageUrl || ''
           };
           db.lmsMaterials.push(material);
           syncResults.push({ id: action.id, status: 'success', message: `Material ${material.title} uploaded.` });
@@ -228,6 +227,18 @@ app.post('/api/sync', (req, res) => {
           };
           db.staff.push(newStaff);
           syncResults.push({ id: action.id, status: 'success', message: `Staff ${newStaff.name} synced.` });
+          break;
+        }
+
+        case 'link_staff': {
+          const { staffId, schoolId } = payload;
+          const idx = db.staff.findIndex(s => s.id === staffId);
+          if (idx !== -1) {
+            db.staff[idx].schoolId = schoolId;
+            syncResults.push({ id: action.id, status: 'success', message: `Staff member linked to school ID ${schoolId}.` });
+          } else {
+            syncResults.push({ id: action.id, status: 'failed', error: `Staff ${staffId} not found to link.` });
+          }
           break;
         }
 
@@ -283,7 +294,7 @@ app.post('/api/sync', (req, res) => {
   }
 
   // Persist state updates to server database
-  saveDatabase();
+  await saveDatabase();
 
   res.json({
     success: true,
@@ -306,7 +317,7 @@ app.post('/api/sync', (req, res) => {
 });
 
 // Single operations to server database (for online mode edits)
-app.post('/api/student', (req, res) => {
+app.post('/api/student', async (req, res) => {
   const student = req.body;
   if (!student.name || !student.gender || !student.curriculum) {
     return res.status(400).json({ error: 'Missing required student fields' });
@@ -329,12 +340,12 @@ app.post('/api/student', (req, res) => {
   };
 
   db.students.push(newStudent);
-  saveDatabase();
+  await saveDatabase();
 
   res.json({ success: true, student: newStudent });
 });
 
-app.post('/api/grade', (req, res) => {
+app.post('/api/grade', async (req, res) => {
   const payload = req.body;
   const db = getDb();
   const index = db.grades.findIndex(
@@ -357,32 +368,32 @@ app.post('/api/grade', (req, res) => {
     db.grades.push(updatedGrade);
   }
 
-  saveDatabase();
+  await saveDatabase();
 
   res.json({ success: true, grade: updatedGrade });
 });
 
 // Real full-stack delete APIs
-app.delete('/api/student/:id', (req, res) => {
+app.delete('/api/student/:id', async (req, res) => {
   const { id } = req.params;
   const db = getDb();
   db.students = db.students.filter(s => s.id !== id);
   db.grades = db.grades.filter(g => g.studentId !== id);
   db.attendance = db.attendance.filter(a => a.studentId !== id);
   db.feeRecords = db.feeRecords.filter(f => f.studentId !== id);
-  saveDatabase();
+  await saveDatabase();
   res.json({ success: true, message: `Student ${id} deleted.` });
 });
 
-app.delete('/api/staff/:id', (req, res) => {
+app.delete('/api/staff/:id', async (req, res) => {
   const { id } = req.params;
   const db = getDb();
   db.staff = db.staff.filter(s => s.id !== id);
-  saveDatabase();
+  await saveDatabase();
   res.json({ success: true, message: `Staff ${id} deleted.` });
 });
 
-app.delete('/api/school/:id', (req, res) => {
+app.delete('/api/school/:id', async (req, res) => {
   const { id } = req.params;
   const db = getDb();
   db.schools = db.schools.filter(s => s.id !== id);
@@ -390,16 +401,132 @@ app.delete('/api/school/:id', (req, res) => {
   db.staff = db.staff.filter(s => s.schoolId !== id);
   db.schoolClasses = db.schoolClasses.filter(s => s.schoolId !== id);
   db.feeRecords = db.feeRecords.filter(s => s.schoolId !== id);
-  saveDatabase();
+  await saveDatabase();
   res.json({ success: true, message: `School ${id} deleted.` });
+});
+
+// Authentication endpoints
+app.post('/api/auth/signup', async (req, res) => {
+  const { email, name, password, role, schoolId } = req.body;
+  if (!email || !name || !password || !role) {
+    return res.status(400).json({ error: 'Missing required signup fields' });
+  }
+
+  const client = await pool.connect();
+  try {
+    const checkUser = await client.query('SELECT * FROM app_users WHERE email = $1', [email]);
+    if (checkUser.rows.length > 0) {
+      return res.status(400).json({ error: 'A user with this email already exists' });
+    }
+
+    await client.query(
+      'INSERT INTO app_users (email, name, password, role, school_id) VALUES ($1, $2, $3, $4, $5)',
+      [email, name, password, role, schoolId || '']
+    );
+
+    // If enrolling as a teacher, register staff profile
+    if (role === 'teacher' && schoolId) {
+      const db = getDb();
+      const staffId = `staff-${db.staff.length + 101}`;
+      const newStaff: Staff = {
+        id: staffId,
+        schoolId: schoolId,
+        name: name,
+        role: 'Teacher',
+        email: email,
+        phone: '0700000000'
+      };
+      db.staff.push(newStaff);
+      await saveDatabase();
+    }
+
+    res.json({
+      success: true,
+      user: { email, name, role, schoolId }
+    });
+  } catch (err: any) {
+    console.error('Registration failed:', err);
+    res.status(500).json({ error: err.message || 'Unknown registration error' });
+  } finally {
+    client.release();
+  }
+});
+
+app.post('/api/auth/login', async (req, res) => {
+  const { email, password } = req.body;
+  if (!email || !password) {
+    return res.status(400).json({ error: 'Missing email or password' });
+  }
+
+  const client = await pool.connect();
+  try {
+    const checkUser = await client.query('SELECT * FROM app_users WHERE email = $1', [email]);
+    if (checkUser.rows.length === 0) {
+      return res.status(400).json({ error: 'No account found with this email' });
+    }
+
+    const user = checkUser.rows[0];
+    if (user.password !== password) {
+      return res.status(400).json({ error: 'Incorrect password provided' });
+    }
+
+    res.json({
+      success: true,
+      user: {
+        email: user.email,
+        name: user.name,
+        role: user.role,
+        schoolId: user.school_id
+      }
+    });
+  } catch (err: any) {
+    console.error('Login failed:', err);
+    res.status(500).json({ error: err.message || 'Unknown authentication error' });
+  } finally {
+    client.release();
+  }
+});
+
+app.post('/api/staff/link', async (req, res) => {
+  const { staffId, schoolId } = req.body;
+  if (!staffId || !schoolId) {
+    return res.status(400).json({ error: 'Missing staffId or schoolId' });
+  }
+
+  const db = getDb();
+  const idx = db.staff.findIndex(s => s.id === staffId);
+  if (idx !== -1) {
+    db.staff[idx].schoolId = schoolId;
+    await saveDatabase();
+    res.json({ success: true, message: 'Staff successfully reassigned/linked.' });
+  } else {
+    res.status(404).json({ error: 'Staff member not found.' });
+  }
 });
 
 // Gemini endpoint for Report-Card Remark Generation
 app.post('/api/gemini/report-comment', async (req, res) => {
-  const { studentName, curriculum, gradesList, subjectsAvg } = req.body;
+  const { studentId, studentName, curriculum, gradesList, subjectsAvg } = req.body;
 
+  // 1. Support the direct database-driven service layer route first
+  if (studentId) {
+    try {
+      console.log(`[Server] Generating personalized database-driven remark for student ID: ${studentId}`);
+      const result = await generatePersonalizedRemark(studentId);
+      return res.json({
+        text: result.text,
+        isFallback: result.isFallback,
+        metrics: result.metrics
+      });
+    } catch (err: any) {
+      console.error('[Server] Database-driven remark generation failed:', err);
+      return res.status(500).json({ error: err.message || 'Personalized comment generation failed.' });
+    }
+  }
+
+  // 2. Backward compatibility with standard payload
   if (!studentName || !curriculum) {
-    return res.status(400).json({ error: 'Student name and curriculum type are required.' });
+    return res.status(400).json({ error: 'Either studentId or both studentName & curriculum are required.' });
   }
 
   const aiClient = getGeminiClient();
@@ -409,9 +536,9 @@ app.post('/api/gemini/report-comment', async (req, res) => {
     console.log('Generating local template-based school comment fallback...');
     let recommendation = '';
     if (curriculum === 'CBE') {
-      const eeCount = gradesList.filter((g: any) => g.rubricRating === 'EE').length;
-      const meCount = gradesList.filter((g: any) => g.rubricRating === 'ME').length;
-      const aeCount = gradesList.filter((g: any) => g.rubricRating === 'AE').length;
+      const eeCount = (gradesList || []).filter((g: any) => g.rubricRating === 'EE').length;
+      const meCount = (gradesList || []).filter((g: any) => g.rubricRating === 'ME').length;
+      const aeCount = (gradesList || []).filter((g: any) => g.rubricRating === 'AE').length;
 
       if (eeCount > meCount) {
         recommendation = `${studentName} exhibits exceptional competencies in critical thinking, communication, and self-efficacy. She/He consistently exceeds learning outcomes. Keep up the brilliant energy!`;
@@ -449,15 +576,15 @@ Here is the grading rubric information:
 - BE: Below Expectations
 
 Student's assessments grades data:
-${JSON.stringify(gradesList)}
+${JSON.stringify(gradesList || [])}
 
-Use Kenyan CBE-appropriate terminology such as "learning strands", "core competencies" (like citizenship, self-efficacy, critical thinking, digital literacy), and "formative appraisals". Write in a encouraging, constructive tone suitable for report cards, detailing their strengths and areas of growth. Keep it under 110 words.`;
+Use Kenyan CBE-appropriate terminology such as "learning strands", "core competencies" (like citizenship, self-efficacy, critical thinking, digital literacy), and "formative appraisals". Write in an encouraging, constructive tone suitable for report cards, detailing their strengths and areas of growth. Keep it under 110 words.`;
     } else {
       contextPrompt = `Generate a personalized, highly professional end-of-term academic remark for student "${studentName}" under the Cambridge International Curriculum framework.
 Grades range from A* to U depending on marks.
 
 Student's assessments grades data:
-${JSON.stringify(gradesList)}
+${JSON.stringify(gradesList || [])}
 
 Use Cambridge-appropriate academic terms like "academic rigor", "testing objectives", "analytical precision", and "structural performance". Write in a balanced, encouraging, and clear tone. Provide specific encouragement for exam skills. Keep it under 110 words.`;
     }
@@ -480,8 +607,135 @@ Use Cambridge-appropriate academic terms like "academic rigor", "testing objecti
   }
 });
 
+// Gemini endpoint for drafting Principal-to-Teacher message
+app.post('/api/gemini/draft-teacher-message', async (req, res) => {
+  const { teacherName, role, purpose, extraContext } = req.body;
+
+  if (!teacherName || !purpose) {
+    return res.status(400).json({ error: 'Teacher name and message purpose are required.' });
+  }
+
+  const aiClient = getGeminiClient();
+
+  if (!aiClient) {
+    console.log('Generating local template-based teacher drafting fallback...');
+    // Fallback:
+    let draftedMessage = '';
+    const subject = `Memo: ${purpose} - ${teacherName}`;
+    if (purpose.includes('Performance')) {
+      draftedMessage = `Subject: ${subject}\n\nDear ${teacherName},\n\nI hope this message finds you well. As part of our ongoing commitment to academic excellence, I wanted to reach out regarding a standard performance appraisal review. Your dedication inside the classroom is highly valued.\n\nRegarding the focus area: "${extraContext || 'standard course delivery'}", let's align our efforts to ensure we achieve our educational and professional standards. Thank you for your continued leadership and support.\n\nWarm regards,\nLead Principal / Director`;
+    } else if (purpose.includes('Lesson Plans')) {
+      draftedMessage = `Subject: ${subject}\n\nDear ${teacherName},\n\nI hope you are having a productive week. This is a gentle request to review and update the curriculum lesson plans and learning guides for your designated streams.\n\nRegarding: "${extraContext || 'weekly lesson submission guidelines'}", please ensure your outline is fully aligned with our educational framework so we remain synchronized. Let me know if you require any instructional aids.\n\nThank you for your tireless efforts.\n\nBest regards,\nOffice of the Principal`;
+    } else if (purpose.includes('Parent Concerns')) {
+      draftedMessage = `Subject: ${subject}\n\nDear ${teacherName},\n\nI am writing to share some feedback points received during our recent parent-teacher community deliberations.\n\nConcerning: "${extraContext || 'classroom student welfare and feedback'}", I would appreciate it if we could schedule a short sync to discuss friendly remedies and support strategies for the affected learners. Your insight into student welfare is crucial.\n\nSincerely,\nLead Principal / Director`;
+    } else {
+      draftedMessage = `Subject: ${subject}\n\nDear ${teacherName},\n\nI am reaching out regarding: ${purpose}.\n\nSpecifically: "${extraContext || 'colleague review standards'}". Thank you for your incredible stewardship of our learning environments. Please let me know your thoughts or feedback on this matter at your earliest convenience.\n\nKind regards,\nSchool Principal`;
+    }
+
+    return res.json({
+      text: draftedMessage,
+      isFallback: true
+    });
+  }
+
+  try {
+    const contextPrompt = `Draft a highly professional, encouraging, and clear message/memo from the School Principal to the teacher named "${teacherName}" (Role: ${role || 'Classroom Teacher'}).
+The purpose of the message is: "${purpose}".
+Additional context/points to cover: "${extraContext || 'general progress and coordination'}".
+
+Write in a warm yet authoritative tone. Format it as a clear memo/letter with a professional Subject: line and structured body. Keep it around 150-180 words. Do not use markdown asterisk styling inside the text block.`;
+
+    const response = await aiClient.models.generateContent({
+      model: 'gemini-3.5-flash',
+      contents: contextPrompt,
+      config: {
+        systemInstruction: 'You are the School Principal at a top tier national academy. You communicate clearly, professionally, and supportively to inspire other educators and staff.'
+      }
+    });
+
+    res.json({
+      text: response.text,
+      isFallback: false
+    });
+  } catch (err: any) {
+    console.error('Gemini API drafting message execution error:', err);
+    res.status(500).json({ error: err.message || 'Draft message generation failed.' });
+  }
+});
+
+// CSV bulk-import students and fee balances route
+app.post('/api/students/bulk-import', async (req, res) => {
+  const { students, feeRecords } = req.body;
+  if (!Array.isArray(students) || students.length === 0) {
+    return res.status(400).json({ error: 'No student records received' });
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    for (const stud of students) {
+      const q = `
+        INSERT INTO students (id, school_id, name, admission_no, gender, grade_level, boarding_status, curriculum, parent_email, parent_phone)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+        ON CONFLICT (id) DO UPDATE SET
+          name = EXCLUDED.name,
+          admission_no = EXCLUDED.admission_no,
+          gender = EXCLUDED.gender,
+          grade_level = EXCLUDED.grade_level;
+      `;
+      const params = [
+        stud.id,
+        stud.schoolId,
+        stud.name,
+        stud.admissionNo,
+        stud.gender || 'Male',
+        stud.gradeLevel || 'Grade 4',
+        stud.boardingStatus || 'Day',
+        stud.curriculum || 'CBE',
+        stud.parentEmail || '',
+        stud.parentPhone || ''
+      ];
+      await client.query(q, params);
+    }
+
+    if (Array.isArray(feeRecords) && feeRecords.length > 0) {
+      for (const fee of feeRecords) {
+        const q = `
+          INSERT INTO fee_records (id, student_id, school_id, total_due, paid_amount)
+          VALUES ($1, $2, $3, $4, $5)
+          ON CONFLICT (id) DO UPDATE SET
+            total_due = EXCLUDED.total_due,
+            paid_amount = EXCLUDED.paid_amount;
+        `;
+        const params = [
+          fee.id,
+          fee.studentId,
+          fee.schoolId,
+          fee.totalDue || 0,
+          fee.paidAmount || 0
+        ];
+        await client.query(q, params);
+      }
+    }
+
+    await client.query('COMMIT');
+    await loadDatabase();
+
+    res.json({ success: true, count: students.length });
+  } catch (err: any) {
+    await client.query('ROLLBACK');
+    console.error('Bulk import database error:', err);
+    res.status(500).json({ error: err.message || 'Database bulk import transaction failure.' });
+  } finally {
+    client.release();
+  }
+});
+
 // Start dev or production asset hosting
 async function startServer() {
+  await loadDatabase();
+
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
       server: { middlewareMode: true },

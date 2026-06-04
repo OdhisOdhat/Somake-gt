@@ -1,9 +1,55 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@400;500;600;700;800;900&display=swap');
 @import "tailwindcss";
 
+:root {
+  --color-white: #ffffff;
+  --color-slate-50: #f8fafc;
+  --color-slate-100: #f1f5f9;
+  --color-slate-200: #e2e8f0;
+  --color-slate-300: #cbd5e1;
+  --color-slate-400: #94a3b8;
+  --color-slate-500: #64748b;
+  --color-slate-600: #475569;
+  --color-slate-700: #334155;
+  --color-slate-800: #1e293b;
+  --color-slate-900: #0f172a;
+}
+
+.dark {
+  --color-white: #11131c;
+  --color-slate-50: #08090d;
+  --color-slate-100: #191b26;
+  --color-slate-200: #252837;
+  --color-slate-300: #3b3f55;
+  --color-slate-400: #889bb0;
+  --color-slate-500: #9fb3ca;
+  --color-slate-600: #b9cadc;
+  --color-slate-700: #dae4ef;
+  --color-slate-800: #f3f6fa;
+  --color-slate-900: #ffffff;
+}
+
 @theme {
   --font-sans: "Inter", system-ui, sans-serif;
   --font-display: "Outfit", system-ui, sans-serif;
+
+  --color-white: var(--color-white);
+  --color-slate-50: var(--color-slate-50);
+  --color-slate-100: var(--color-slate-100);
+  --color-slate-200: var(--color-slate-200);
+  --color-slate-300: var(--color-slate-300);
+  --color-slate-400: var(--color-slate-400);
+  --color-slate-500: var(--color-slate-500);
+  --color-slate-600: var(--color-slate-600);
+  --color-slate-700: var(--color-slate-700);
+  --color-slate-800: var(--color-slate-800);
+  --color-slate-900: var(--color-slate-900);
+}
+
+html, body {
+  background-color: var(--color-slate-50);
+  color: var(--color-slate-800);
+  transition: background-color 0.25s ease, color 0.15s ease, border-color 0.15s ease;
 }
 
 /* Prevent layout shift (shaking/jumping) when vertical scrollbar appears or disappears during navigation */

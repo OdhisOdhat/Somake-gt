@@ -13,10 +13,14 @@ import {
   BookOpen, 
   Bus, 
   Home, 
-  UserPlus 
+  UserPlus,
+  UploadCloud,
+  FileSpreadsheet,
+  X
 } from 'lucide-react';
 import { Student, Assessment, StudentGrade, School } from '../types';
 import NoSchoolSelected from './NoSchoolSelected';
+import { useAppContext } from '../context/AppContext';
 
 interface StudentsTabProps {
   activeSchoolId: string;
@@ -42,6 +46,17 @@ export default function StudentsTab({
   onGenerateAiComment
 }: StudentsTabProps) {
   const activeSchool = schools.find(s => s.id === activeSchoolId);
+  const { userRole, showToast, fetchStateFromServer } = useAppContext();
+
+  if (!activeSchoolId || !activeSchool) {
+    return <NoSchoolSelected title="Select a school profile" />;
+  }
+
+  // Bulk CSV parser states
+  const [showBulkImport, setShowBulkImport] = useState(false);
+  const [csvFile, setCsvFile] = useState<File | null>(null);
+  const [isDragOver, setIsDragOver] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
 
   // Search/Filters states
   const [studentSearch, setStudentSearch] = useState('');
@@ -87,6 +102,156 @@ export default function StudentsTab({
     }
   };
 
+  // Drag and Drop Callbacks
+  const triggerFileSelect = () => {
+    const fileElem = document.getElementById('csv-file-picker-input');
+    if (fileElem) fileElem.click();
+  };
+
+  const onDragOverHandler = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(true);
+  };
+
+  const onDragLeaveHandler = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+  };
+
+  const onDropHandler = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      const file = e.dataTransfer.files[0];
+      if (file.name.endsWith('.csv') || file.type === 'text/csv') {
+        setCsvFile(file);
+        showToast(`CSV queued: ${file.name} (${Math.round(file.size / 1024)} KB)`, 'info');
+      } else {
+        showToast('Only CSV files can be imported into this pupil register!', 'error');
+      }
+    }
+  };
+
+  const onFileChangeHandler = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const file = e.target.files[0];
+      setCsvFile(file);
+      showToast(`CSV loaded: ${file.name}`, 'info');
+    }
+  };
+
+  const handleCSVImportSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!csvFile) {
+      showToast('Please select or drop a valid CSV student sheet first', 'error');
+      return;
+    }
+
+    setIsImporting(true);
+    const reader = new FileReader();
+    reader.onload = async (evt) => {
+      try {
+        const text = evt.target?.result as string;
+        if (!text) throw new Error('File content spreadsheet is empty');
+
+        // Simple row lines breakdown
+        const rows = text.split(/\r?\n/).map(line => {
+          // Simple parsing of CSV elements
+          const matches = line.match(/(".*?"|[^",\r\n]+)(?=\s*,|\s*$|\r|\n)/g) || line.split(',');
+          return matches.map(val => val.replace(/^"|"$/g, '').trim());
+        }).filter(row => row.length > 0 && row.some(cell => cell !== ''));
+
+        if (rows.length < 2) {
+          throw new Error('CSV sheet is empty. Ensure you have a header row and data records!');
+        }
+
+        const headers = rows[0].map(h => h.toLowerCase());
+        
+        // Match header descriptors
+        const nameIdx = headers.findIndex(h => h.includes('name'));
+        const admIdx = headers.findIndex(h => h.includes('id') || h.includes('adm') || h.includes('number'));
+        const balIdx = headers.findIndex(h => h.includes('balance') || h.includes('fee') || h.includes('due') || h.includes('amount'));
+        const genderIdx = headers.findIndex(h => h.includes('gender') || h.includes('sex'));
+        const gradeIdx = headers.findIndex(h => h.includes('grade') || h.includes('class'));
+
+        if (nameIdx === -1) {
+          throw new Error('Could not identify a column containing student "Name". Make sure you have a "Name" column!');
+        }
+
+        const importStudents: any[] = [];
+        const importFeeRecords: any[] = [];
+
+        // Parse student rows starting from row 1
+        for (let i = 1; i < rows.length; i++) {
+          const row = rows[i];
+          const name = row[nameIdx];
+          if (!name) continue; // Skip blank lines
+
+          const admissionNo = admIdx !== -1 && row[admIdx] ? row[admIdx] : `ADM-${Math.floor(1000 + Math.random() * 9000)}`;
+          const initialFeeBalance = balIdx !== -1 && row[balIdx] ? parseFloat(row[balIdx].replace(/[^0-9.]/g, '')) : 45000;
+          const gender = genderIdx !== -1 && row[genderIdx] 
+            ? (row[genderIdx].toLowerCase().startsWith('f') ? 'Female' : 'Male') 
+            : 'Male';
+          const gradeLevel = gradeIdx !== -1 && row[gradeIdx] ? row[gradeIdx] : 'Grade 4';
+
+          const studentId = `stud-csv-${Date.now()}-${i}`;
+          
+          importStudents.push({
+            id: studentId,
+            schoolId: activeSchoolId,
+            name,
+            admissionNo,
+            gender,
+            gradeLevel,
+            boardingStatus: 'Day',
+            curriculum: (activeSchool?.curriculum ?? 'CBE').includes('CBE') ? 'CBE' : 'Cambridge',
+            parentEmail: '',
+            parentPhone: ''
+          });
+
+          importFeeRecords.push({
+            id: `fee-csv-${Date.now()}-${i}`,
+            studentId: studentId,
+            schoolId: activeSchoolId,
+            totalDue: isNaN(initialFeeBalance) ? 45000 : initialFeeBalance,
+            paidAmount: 0
+          });
+        }
+
+        const response = await fetch('/api/students/bulk-import', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ students: importStudents, feeRecords: importFeeRecords })
+        });
+
+        if (!response.ok) {
+          const errRes = await response.json();
+          throw new Error(errRes.error || 'Server rejected bulk import files');
+        }
+
+        const resData = await response.json();
+        showToast(`Successfully bulk imported ${resData.count} pupil profiles and created their outstanding school fee accounts!`, 'success');
+        
+        // Reactive Context Load
+        await fetchStateFromServer();
+
+        setCsvFile(null);
+        setShowBulkImport(false);
+      } catch (err: any) {
+        showToast(`CSV parse failure: ${err.message}`, 'error');
+      } finally {
+        setIsImporting(false);
+      }
+    };
+
+    reader.onerror = () => {
+      showToast('Error reading the CSV file on client-side', 'error');
+      setIsImporting(false);
+    };
+
+    reader.readAsText(csvFile);
+  };
+
   return (
     <div id="skoola-students-tab-root" className="grid grid-cols-1 lg:grid-cols-12 gap-6">
       
@@ -106,15 +271,138 @@ export default function StudentsTab({
             />
           </div>
 
-          <button
-            id="btn-students-add-student"
-            onClick={onAddNewStudent}
-            className="w-full sm:w-auto shrink-0 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-sm transition-all flex items-center justify-center gap-1.5"
-          >
-            <UserPlus className="w-4 h-4" />
-            Enroll pupil
-          </button>
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <button
+              onClick={() => {
+                if (userRole !== 'super_admin') {
+                  showToast("Access Restricted: Only Super Administrators can bulk-import student records.", "error");
+                  return;
+                }
+                setShowBulkImport(!showBulkImport);
+              }}
+              className="w-full sm:w-auto shrink-0 font-bold text-xs px-4 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+            >
+              <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+              Bulk Import CSV
+            </button>
+            
+            <button
+              id="btn-students-add-student"
+              onClick={() => {
+                if (userRole !== 'super_admin') {
+                  showToast("Access Restricted: Only Super Administrators have rights to register new student records.", "error");
+                  return;
+                }
+                onAddNewStudent();
+              }}
+              className={`w-full sm:w-auto shrink-0 font-bold text-xs px-4 py-2.5 rounded-xl shadow-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                userRole !== 'super_admin'
+                  ? 'bg-slate-100/70 border border-slate-200 text-slate-400 cursor-not-allowed'
+                  : 'bg-indigo-600 hover:bg-indigo-700 text-white'
+              }`}
+            >
+              <UserPlus className="w-4 h-4" />
+              Enroll pupil {userRole !== 'super_admin' && '🔒'}
+            </button>
+          </div>
         </div>
+
+        {/* Expandable Bulk Import Box */}
+        {showBulkImport && (
+          <div className="bg-slate-50 border border-dashed border-slate-250 p-5 rounded-2xl space-y-4 animate-in slide-in-from-top-3 duration-200 text-left">
+            <div className="flex items-center justify-between">
+              <div>
+                <h4 className="text-xs font-black text-slate-900">Bulk Import Scholar Database via CSV</h4>
+                <p className="text-[10px] text-slate-400 leading-relaxed font-semibold mt-0.5">
+                  Import multi-row student directories and instantiate outstanding tuition fee balances simultaneously.
+                </p>
+              </div>
+              <button 
+                onClick={() => { setCsvFile(null); setShowBulkImport(false); }}
+                className="text-slate-400 hover:text-slate-600 bg-white p-1 rounded-full border border-slate-200 cursor-pointer"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            <div 
+              onDragOver={onDragOverHandler}
+              onDragLeave={onDragLeaveHandler}
+              onDrop={onDropHandler}
+              onClick={triggerFileSelect}
+              className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all ${
+                isDragOver ? 'border-indigo-500 bg-indigo-50/50' : 'border-slate-200 bg-white hover:bg-slate-50/50'
+              }`}
+            >
+              <input 
+                id="csv-file-picker-input"
+                type="file"
+                accept=".csv"
+                onChange={onFileChangeHandler}
+                className="hidden"
+              />
+              <div className="mx-auto bg-slate-50 p-3 rounded-full w-12 h-12 flex items-center justify-center text-slate-500 mb-3 border border-slate-100 shadow-xs">
+                <UploadCloud className="w-5 h-5 text-indigo-600" />
+              </div>
+              
+              {csvFile ? (
+                <div className="space-y-1">
+                  <p className="text-xs font-extrabold text-slate-850">{csvFile.name}</p>
+                  <p className="text-[10px] text-emerald-600 font-extrabold">✓ CSV sheet loaded successfully. Click 'Proceed' below!</p>
+                </div>
+              ) : (
+                <div className="space-y-1">
+                  <p className="text-xs font-black text-slate-700">Drag & drop your CSV spreadsheet here</p>
+                  <p className="text-[10px] text-slate-400 font-semibold leading-normal">or click to browse your devices local directories</p>
+                </div>
+              )}
+            </div>
+
+            {/* Recommended Template Format details */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-[10px] bg-white p-3 rounded-xl border border-slate-150">
+              <div className="space-y-1 text-left">
+                <span className="text-slate-400 font-black block uppercase tracking-wider text-[9px]">Recommended Template Format:</span>
+                <code className="bg-slate-50 text-indigo-600 font-black font-mono border border-slate-100 px-1 py-0.5 rounded text-[9.5px]">
+                  Name, Admission, Balance, Gender, Grade
+                </code>
+              </div>
+              
+              <button
+                type="button"
+                onClick={() => {
+                  const demoCSV = "Name,Admission,Balance,Gender,Grade\nEsther Akinyi,ADM-8091,32000,Female,Grade 5\nKevin Mwangi,ADM-8092,54000,Male,Grade 6\nAmina Juma,ADM-8093,0,Female,Grade 4\nBrian Chepkwony,ADM-8094,45000,Male,Grade 5";
+                  const blob = new Blob([demoCSV], { type: 'text/csv' });
+                  const file = new File([blob], 'demo_students_import.csv', { type: 'text/csv' });
+                  setCsvFile(file);
+                  showToast('Prefilled with mock demo data! See status badge above.', 'success');
+                }}
+                className="text-indigo-700 hover:text-indigo-900 font-extrabold flex items-center gap-1 bg-indigo-50 px-2.5 py-1.5 rounded-lg transition-colors border border-indigo-150 cursor-pointer self-stretch sm:self-auto text-center justify-center shrink-0"
+              >
+                ✏ Inject test sample CSV
+              </button>
+            </div>
+
+            {csvFile && (
+              <div className="flex justify-end gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setCsvFile(null)}
+                  className="px-3.5 py-2 hover:bg-slate-200 text-slate-500 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                >
+                  Clear Selection
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCSVImportSubmit}
+                  disabled={isImporting}
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-xl text-xs font-black shadow-sm transition-all flex items-center gap-1.5 cursor-pointer"
+                >
+                  {isImporting ? 'Processing entries...' : 'Proceed with Bulk Upload'}
+                </button>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* List of Students */}
         <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
@@ -196,12 +484,20 @@ export default function StudentsTab({
 
               <button
                 onClick={() => {
+                  if (userRole !== 'super_admin') {
+                    showToast("Access Restricted: Academic profile deletion requires Super Administrator authentication.", "error");
+                    return;
+                  }
                   onDeleteStudent(selectedStudent.id);
                   setSelectedStudentId(null);
                 }}
-                className="text-[10.5px] font-bold text-slate-500 hover:text-rose-600 border border-slate-200 hover:border-rose-100 hover:bg-rose-50 px-2 my-0.5 py-1 rounded-lg transition-colors"
+                className={`text-[10.5px] font-bold px-2 my-0.5 py-1 rounded-lg transition-all border ${
+                  userRole !== 'super_admin'
+                    ? 'bg-slate-50 border-slate-200 text-slate-400 cursor-not-allowed opacity-60'
+                    : 'text-slate-500 hover:text-rose-600 border-slate-200 hover:border-rose-100 hover:bg-rose-50'
+                }`}
               >
-                Delete Profile
+                Delete Profile {userRole !== 'super_admin' && '🔒'}
               </button>
             </div>
 

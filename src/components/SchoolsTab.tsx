@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Building, Plus, Trash2, ArrowRight, ShieldCheck } from 'lucide-react';
 import { School } from '../types';
 
@@ -19,6 +20,7 @@ export default function SchoolsTab({
   onNewSchoolClick,
   onDeleteSchool
 }: SchoolsTabProps) {
+  const navigate = useNavigate();
   return (
     <div id="skoola-schools-tab-root" className="space-y-6">
       
@@ -107,7 +109,7 @@ export default function SchoolsTab({
                   <button
                     onClick={() => {
                       setActiveSchoolId(sch.id);
-                      setActiveTab('dashboard');
+                      navigate(`/${sch.id}/dashboard`);
                     }}
                     className={`flex items-center gap-1 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
                       isActive
