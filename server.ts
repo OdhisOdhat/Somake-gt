@@ -30,6 +30,29 @@ const PORT = 3000;
 
 app.use(express.json());
 
+// Normalization middleware for Vercel API routing
+app.use((req, res, next) => {
+  const apiPaths = [
+    '/state',
+    '/sync',
+    '/student',
+    '/grade',
+    '/staff',
+    '/school',
+    '/auth',
+    '/gemini',
+    '/students'
+  ];
+  
+  if (req.url && !req.url.startsWith('/api')) {
+    const matchesApi = apiPaths.some(p => req.url === p || req.url.startsWith(p + '/'));
+    if (matchesApi) {
+      req.url = '/api' + req.url;
+    }
+  }
+  next();
+});
+
 // Database pre-hydration middleware for serverless/cold-starts
 let dbLoadedPromise: Promise<any> | null = null;
 const ensureDbLoaded = async (req: express.Request, res: express.Response, next: express.NextFunction) => {
