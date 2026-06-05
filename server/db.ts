@@ -160,6 +160,12 @@ let dbState: DatabaseState = { ...initialData };
 async function initTables() {
   const client = await pool.connect();
   try {
+    const tableCheck = await client.query("SELECT to_regclass('public.app_users')");
+    if (tableCheck.rows[0] && tableCheck.rows[0].to_regclass) {
+      // Tables already exist; bypass CREATE TABLE queries for instant serverless cold-starts
+      return;
+    }
+
     // 1. Create table schema if not exist
     await client.query(`
       CREATE TABLE IF NOT EXISTS schools (

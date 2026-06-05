@@ -34,7 +34,10 @@ app.use(express.json());
 let dbLoadedPromise: Promise<any> | null = null;
 const ensureDbLoaded = async (req: express.Request, res: express.Response, next: express.NextFunction) => {
   if (!dbLoadedPromise) {
-    dbLoadedPromise = loadDatabase();
+    dbLoadedPromise = loadDatabase().catch(err => {
+      dbLoadedPromise = null; // Clear cached rejected promise to allow retries
+      throw err;
+    });
   }
   try {
     await dbLoadedPromise;
