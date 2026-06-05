@@ -285,18 +285,32 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const handleLogin = async (email: string, password: string): Promise<boolean> => {
     try {
+      console.log(`[Skoola Auth] Attempting login for ${email}...`);
       const resp = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })
       });
       if (!resp.ok) {
-        const err = await resp.json();
-        showToast(err.error || 'Authentication failed', 'error');
+        let errMsg = 'Authentication failed';
+        try {
+          const text = await resp.text();
+          try {
+            const parsed = JSON.parse(text);
+            errMsg = parsed.error || parsed.message || errMsg;
+          } catch {
+            errMsg = text.slice(0, 100) || `Server error ${resp.status}`;
+          }
+        } catch {
+          errMsg = `Server error ${resp.status}`;
+        }
+        console.error(`[Skoola Auth] Login request failed with status: ${resp.status}. Details:`, errMsg);
+        showToast(errMsg, 'error');
         return false;
       }
       
       const data = await resp.json();
+      console.log('[Skoola Auth] Login success! User payload:', data.user);
       setCurrentUser(data.user);
       setUserEmail(data.user.email);
       setUserRole(data.user.role);
@@ -318,26 +332,41 @@ export function AppProvider({ children }: { children: ReactNode }) {
       
       showToast(`Welcome back, ${data.user.name || 'User'}!`, 'success');
       return true;
-    } catch (e) {
-      showToast('Network error during login request.', 'error');
+    } catch (e: any) {
+      console.error('[Skoola Auth] Unexpected error in handleLogin:', e);
+      showToast(`Network or connection error during login: ${e?.message || e}`, 'error');
       return false;
     }
   };
 
   const handleSignup = async (userData: any): Promise<boolean> => {
     try {
+      console.log('[Skoola Auth] Attempting signup for', userData.email);
       const resp = await fetch('/api/auth/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(userData)
       });
       if (!resp.ok) {
-        const err = await resp.json();
-        showToast(err.error || 'Registration failed', 'error');
+        let errMsg = 'Registration failed';
+        try {
+          const text = await resp.text();
+          try {
+            const parsed = JSON.parse(text);
+            errMsg = parsed.error || parsed.message || errMsg;
+          } catch {
+            errMsg = text.slice(0, 100) || `Server error ${resp.status}`;
+          }
+        } catch {
+          errMsg = `Server error ${resp.status}`;
+        }
+        console.error(`[Skoola Auth] Signup request failed with status: ${resp.status}. Details:`, errMsg);
+        showToast(errMsg, 'error');
         return false;
       }
       
       const data = await resp.json();
+      console.log('[Skoola Auth] Signup success! User payload:', data.user);
       setCurrentUser(data.user);
       setUserEmail(data.user.email);
       setUserRole(data.user.role);
@@ -352,8 +381,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       
       showToast(`Account successfully created, welcome ${data.user.name || 'User'}!`, 'success');
       return true;
-    } catch (e) {
-      showToast('Network error during registration request.', 'error');
+    } catch (e: any) {
+      console.error('[Skoola Auth] Unexpected error in handleSignup:', e);
+      showToast(`Network or connection error during signup: ${e?.message || e}`, 'error');
       return false;
     }
   };

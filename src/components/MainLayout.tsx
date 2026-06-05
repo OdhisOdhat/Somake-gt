@@ -73,6 +73,7 @@ export default function MainLayout() {
   const [authTab, setAuthTab] = useState<'signin' | 'signup'>('signin');
   const [loginEmail, setLoginEmail] = useState<string>('');
   const [loginPassword, setLoginPassword] = useState<string>('');
+  const [isAuthenticating, setIsAuthenticating] = useState<boolean>(false);
 
   const [signupForm, setSignupForm] = useState({
     name: '',
@@ -84,19 +85,30 @@ export default function MainLayout() {
 
   const onLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isAuthenticating) return;
     if (!loginEmail || !loginPassword) {
       showToast('Please enter both email and password', 'error');
       return;
     }
-    const success = await handleLogin(loginEmail, loginPassword);
-    if (success) {
-      setLoginEmail('');
-      setLoginPassword('');
+    
+    setIsAuthenticating(true);
+    try {
+      const success = await handleLogin(loginEmail, loginPassword);
+      if (success) {
+        setLoginEmail('');
+        setLoginPassword('');
+      }
+    } catch (err: any) {
+      console.error('[LoginSubmit Error]', err);
+      showToast(err.message || 'Login attempt failed.', 'error');
+    } finally {
+      setIsAuthenticating(false);
     }
   };
 
   const onSignupSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isAuthenticating) return;
     const { name, email, password, role, schoolId } = signupForm;
     if (!name || !email || !password || !role) {
       showToast('Please fill in all required signup fields', 'error');
@@ -107,22 +119,43 @@ export default function MainLayout() {
       return;
     }
 
-    const success = await handleSignup({ name, email, password, role, schoolId });
-    if (success) {
-      setSignupForm({
-        name: '',
-        email: '',
-        password: '',
-        role: 'teacher',
-        schoolId: ''
-      });
+    setIsAuthenticating(true);
+    try {
+      const success = await handleSignup({ name, email, password, role, schoolId });
+      if (success) {
+        setSignupForm({
+          name: '',
+          email: '',
+          password: '',
+          role: 'teacher',
+          schoolId: ''
+        });
+      }
+    } catch (err: any) {
+      console.error('[SignupSubmit Error]', err);
+      showToast(err.message || 'Signup attempt failed.', 'error');
+    } finally {
+      setIsAuthenticating(false);
     }
   };
 
   // If Session Admin Locks are active, show secure lock-gate
   if (isSignedOut) {
     return (
-      <div id="skoola-lockscreen" className="min-h-screen bg-slate-900 flex items-center justify-center p-4 selection:bg-indigo-500 selection:text-white">
+      <div id="skoola-lockscreen" className="min-h-screen bg-slate-900 flex items-center justify-center p-4 selection:bg-indigo-500 selection:text-white relative">
+        {toast && (
+          <div 
+            id="toast-notification"
+            className={`fixed top-5 right-5 z-50 flex items-center gap-3 p-4 rounded-xl shadow-xl border transition-all duration-300 max-w-sm font-sans ${
+              toast.type === 'success' ? 'bg-emerald-50 border-emerald-200 text-emerald-800' :
+              toast.type === 'error' ? 'bg-rose-50 border-rose-200 text-rose-800' :
+              'bg-indigo-50 border-indigo-200 text-indigo-900'
+            }`}
+          >
+            {toast.type === 'success' ? <Check className="w-4 h-4 text-emerald-600 stroke-[2.5]" /> : <AlertCircle className="w-4 h-4 text-amber-600" />}
+            <div className="text-xs font-bold leading-none">{toast.message}</div>
+          </div>
+        )}
         <div className="bg-white border border-slate-100 rounded-3xl p-6 md:p-8 max-w-md w-full shadow-2xl space-y-6">
           <div className="text-center space-y-2">
             <div className="mx-auto bg-indigo-50 text-indigo-600 p-4 rounded-full w-14 h-14 flex items-center justify-center shadow-inner">
@@ -196,10 +229,20 @@ export default function MainLayout() {
 
               <button
                 type="submit"
-                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs py-3.5 rounded-xl transition-all shadow-sm flex items-center justify-center gap-2"
+                disabled={isAuthenticating}
+                className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white font-extrabold text-xs py-3.5 rounded-xl transition-all shadow-sm flex items-center justify-center gap-2 disabled:cursor-not-allowed"
               >
-                Sign In to Workspace
-                <ArrowRight className="w-3.5 h-3.5" />
+                {isAuthenticating ? (
+                  <>
+                    <div className="animate-spin rounded-full h-3.5 w-3.5 border-2 border-white border-t-transparent" />
+                    Connecting...
+                  </>
+                ) : (
+                  <>
+                    Sign In to Workspace
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </>
+                )}
               </button>
 
               <div className="bg-indigo-50/50 rounded-2xl border border-indigo-100/50 p-3.5 space-y-1.5 text-left">
@@ -300,10 +343,20 @@ export default function MainLayout() {
 
               <button
                 type="submit"
-                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs py-3.5 rounded-xl transition-all shadow-sm flex items-center justify-center gap-2 mt-2"
+                disabled={isAuthenticating}
+                className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-400 text-white font-extrabold text-xs py-3.5 rounded-xl transition-all shadow-sm flex items-center justify-center gap-2 mt-2 disabled:cursor-not-allowed"
               >
-                Register & Initialize Account
-                <ArrowRight className="w-3.5 h-3.5" />
+                {isAuthenticating ? (
+                  <>
+                    <div className="animate-spin rounded-full h-3.5 w-3.5 border-2 border-white border-t-transparent" />
+                    Initializing Portal...
+                  </>
+                ) : (
+                  <>
+                    Register & Initialize Account
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </>
+                )}
               </button>
             </form>
           )}
