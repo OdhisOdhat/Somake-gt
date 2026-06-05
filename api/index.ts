@@ -8,15 +8,26 @@ export default async function (req: any, res: any) {
   try {
     if (!handler) {
       console.log("[Somake Vercel Proxy] Initializing server module...");
-      const serverModule = await import('../server');
-      handler = serverModule.default;
-      console.log("[Somake Vercel Proxy] Server module initialized successfully!");
+      try {
+        // Attempt to import the compiled production server bundle
+        console.log("[Somake Vercel Proxy] Trying to load compiled server...");
+        const serverModule = await import('../dist/server.cjs');
+        handler = serverModule.default || serverModule;
+        console.log("[Somake Vercel Proxy] Compiled server loaded successfully!");
+      } catch (err: any) {
+        console.warn("[Somake Vercel Proxy] Failed to load compiled server, falling back to server.ts:", err.message);
+        const serverModule = await import('../server');
+        handler = serverModule.default || serverModule;
+        console.log("[Somake Vercel Proxy] Fallback server loaded successfully!");
+      }
     }
-    return handler(req, res);
+    
+    // Express handler call
+    const expressApp = handler.default || handler;
+    return expressApp(req, res);
   } catch (err: any) {
     console.error("[Somake Vercel Proxy] CRITICAL: Failed to load or run server:", err);
     
-    // Set response headers to JSON
     res.setHeader('Content-Type', 'application/json');
     res.status(500).json({
       error: "Vercel Serverless Function Startup Error",
@@ -24,7 +35,8 @@ export default async function (req: any, res: any) {
       stack: err.stack || "",
       env: {
         DATABASE_URL_DEFINED: !!process.env.DATABASE_URL,
-        VERCEL: process.env.VERCEL || "undefined"
+        VERCEL: process.env.VERCEL || "undefined",
+        NODE_ENV: process.env.NODE_ENV || "undefined"
       }
     });
   }
