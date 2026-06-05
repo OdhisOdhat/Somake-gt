@@ -21,6 +21,7 @@ import {
 import { Student, Assessment, StudentGrade, School } from '../types';
 import NoSchoolSelected from './NoSchoolSelected';
 import { useAppContext } from '../context/AppContext';
+import { downloadStudentTemplate } from '../utils/templateGenerator';
 
 interface StudentsTabProps {
   activeSchoolId: string;
@@ -367,19 +368,30 @@ export default function StudentsTab({
                 </code>
               </div>
               
-              <button
-                type="button"
-                onClick={() => {
-                  const demoCSV = "Name,Admission,Balance,Gender,Grade\nEsther Akinyi,ADM-8091,32000,Female,Grade 5\nKevin Mwangi,ADM-8092,54000,Male,Grade 6\nAmina Juma,ADM-8093,0,Female,Grade 4\nBrian Chepkwony,ADM-8094,45000,Male,Grade 5";
-                  const blob = new Blob([demoCSV], { type: 'text/csv' });
-                  const file = new File([blob], 'demo_students_import.csv', { type: 'text/csv' });
-                  setCsvFile(file);
-                  showToast('Prefilled with mock demo data! See status badge above.', 'success');
-                }}
-                className="text-indigo-700 hover:text-indigo-900 font-extrabold flex items-center gap-1 bg-indigo-50 px-2.5 py-1.5 rounded-lg transition-colors border border-indigo-150 cursor-pointer self-stretch sm:self-auto text-center justify-center shrink-0"
-              >
-                ✏ Inject test sample CSV
-              </button>
+              <div className="flex flex-wrap items-center gap-2 self-stretch sm:self-auto">
+                <button
+                  type="button"
+                  onClick={downloadStudentTemplate}
+                  className="text-emerald-700 hover:text-emerald-950 font-extrabold flex items-center gap-1 bg-emerald-50 hover:bg-emerald-100/85 px-2.5 py-1.5 rounded-lg transition-colors border border-emerald-150 cursor-pointer text-xs"
+                >
+                  <FileSpreadsheet className="w-3.5 h-3.5" />
+                  Download Student XLSX
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    const demoCSV = "Name,Admission,Balance,Gender,Grade\nEsther Akinyi,ADM-8091,32000,Female,Grade 5\nKevin Mwangi,ADM-8092,54000,Male,Grade 6\nAmina Juma,ADM-8093,0,Female,Grade 4\nBrian Chepkwony,ADM-8094,45000,Male,Grade 5";
+                    const blob = new Blob([demoCSV], { type: 'text/csv' });
+                    const file = new File([blob], 'demo_students_import.csv', { type: 'text/csv' });
+                    setCsvFile(file);
+                    showToast('Prefilled with mock demo data! See status badge above.', 'success');
+                  }}
+                  className="text-indigo-700 hover:text-indigo-900 font-extrabold flex items-center gap-1 bg-indigo-50 px-2.5 py-1.5 rounded-lg transition-colors border border-indigo-150 cursor-pointer text-xs"
+                >
+                  ✏ Inject test sample CSV
+                </button>
+              </div>
             </div>
 
             {csvFile && (

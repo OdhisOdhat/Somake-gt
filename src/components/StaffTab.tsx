@@ -14,11 +14,13 @@ import {
   X, 
   Check, 
   FileText,
-  AlertCircle
+  AlertCircle,
+  FileSpreadsheet
 } from 'lucide-react';
 import { Staff, School } from '../types';
 import NoSchoolSelected from './NoSchoolSelected';
 import { useAppContext } from '../context/AppContext';
+import { downloadStaffTemplate } from '../utils/templateGenerator';
 
 interface StaffTabProps {
   activeSchoolId: string;
@@ -151,14 +153,24 @@ export default function StaffTab({
           <p className="text-xs text-slate-500 mt-0.5">Add, coordinate records, and draft formal directives directly to school instructors</p>
         </div>
 
-        <button
-          id="btn-staff-add-staff"
-          onClick={onAddStaff}
-          className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-4.5 py-2.5 rounded-xl shadow-sm transition-all flex items-center gap-1.5 self-start sm:self-auto shrink-0 animate-in fade-in duration-300"
-        >
-          <Plus className="w-4 h-4 stroke-[2.2]" />
-          Add staff member
-        </button>
+        <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto shrink-0">
+          <button
+            onClick={downloadStaffTemplate}
+            className="border border-emerald-200 bg-emerald-55/40 hover:bg-emerald-100/70 text-emerald-800 font-extrabold text-xs px-4 py-2.5 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer"
+          >
+            <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+            Download XLSX Template
+          </button>
+
+          <button
+            id="btn-staff-add-staff"
+            onClick={onAddStaff}
+            className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-4.5 py-2.5 rounded-xl shadow-sm transition-all flex items-center gap-1.5 cursor-pointer animate-in fade-in duration-300"
+          >
+            <Plus className="w-4 h-4 stroke-[2.2]" />
+            Add staff member
+          </button>
+        </div>
       </div>
 
       {/* Grid or Blank State */}
