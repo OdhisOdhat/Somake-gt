@@ -30,6 +30,23 @@ const PORT = 3000;
 
 app.use(express.json());
 
+// Database pre-hydration middleware for serverless/cold-starts
+let dbLoadedPromise: Promise<any> | null = null;
+const ensureDbLoaded = async (req: express.Request, res: express.Response, next: express.NextFunction) => {
+  if (!dbLoadedPromise) {
+    dbLoadedPromise = loadDatabase();
+  }
+  try {
+    await dbLoadedPromise;
+    next();
+  } catch (err: any) {
+    console.error('Database pre-load failure inside middleware:', err);
+    res.status(500).json({ error: 'Database loading failure: ' + err.message });
+  }
+};
+
+app.use('/api', ensureDbLoaded);
+
 // Lazy Gemini Initialization Helper
 let geminiClientCache: GoogleGenAI | null = null;
 function getGeminiClient(): GoogleGenAI | null {
@@ -755,4 +772,8 @@ async function startServer() {
   });
 }
 
-startServer();
+if (!process.env.VERCEL) {
+  startServer();
+}
+
+export default app;
