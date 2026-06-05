@@ -55,10 +55,7 @@ const registerDelete = (path: string, ...handlers: any[]) => {
 let dbLoadedPromise: Promise<any> | null = null;
 const ensureDbLoaded = async (req: express.Request, res: express.Response, next: express.NextFunction) => {
   if (!dbLoadedPromise) {
-    dbLoadedPromise = loadDatabase().catch(err => {
-      dbLoadedPromise = null; // Clear cached rejected promise to allow retries
-      throw err;
-    });
+    dbLoadedPromise = loadDatabase();
   }
   try {
     await dbLoadedPromise;
@@ -474,8 +471,9 @@ registerPost('/api/auth/signup', async (req, res) => {
     return res.status(400).json({ error: 'Missing required signup fields' });
   }
 
-  const client = await pool.connect();
+  let client;
   try {
+    client = await pool.connect();
     const checkUser = await client.query('SELECT * FROM app_users WHERE email = $1', [email]);
     if (checkUser.rows.length > 0) {
       return res.status(400).json({ error: 'A user with this email already exists' });
@@ -510,7 +508,7 @@ registerPost('/api/auth/signup', async (req, res) => {
     console.error('Registration failed:', err);
     res.status(500).json({ error: err.message || 'Unknown registration error' });
   } finally {
-    client.release();
+    if (client) client.release();
   }
 });
 
@@ -520,8 +518,9 @@ registerPost('/api/auth/login', async (req, res) => {
     return res.status(400).json({ error: 'Missing email or password' });
   }
 
-  const client = await pool.connect();
+  let client;
   try {
+    client = await pool.connect();
     const checkUser = await client.query('SELECT * FROM app_users WHERE email = $1', [email]);
     if (checkUser.rows.length === 0) {
       return res.status(400).json({ error: 'No account found with this email' });
@@ -545,7 +544,7 @@ registerPost('/api/auth/login', async (req, res) => {
     console.error('Login failed:', err);
     res.status(500).json({ error: err.message || 'Unknown authentication error' });
   } finally {
-    client.release();
+    if (client) client.release();
   }
 });
 
@@ -732,8 +731,9 @@ registerPost('/api/students/bulk-import', async (req, res) => {
     return res.status(400).json({ error: 'No student records received' });
   }
 
-  const client = await pool.connect();
+  let client;
   try {
+    client = await pool.connect();
     await client.query('BEGIN');
 
     for (const stud of students) {
@@ -786,11 +786,17 @@ registerPost('/api/students/bulk-import', async (req, res) => {
 
     res.json({ success: true, count: students.length });
   } catch (err: any) {
-    await client.query('ROLLBACK');
+    if (client) {
+      try {
+        await client.query('ROLLBACK');
+      } catch (rollbackErr) {
+        console.error('Rollback failed:', rollbackErr);
+      }
+    }
     console.error('Bulk import database error:', err);
     res.status(500).json({ error: err.message || 'Database bulk import transaction failure.' });
   } finally {
-    client.release();
+    if (client) client.release();
   }
 });
 

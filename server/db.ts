@@ -444,22 +444,36 @@ async function initTables() {
 }
 
 export async function loadDatabase(): Promise<DatabaseState> {
-  await initTables();
-
-  const client = await pool.connect();
   try {
-    const schools = await client.query('SELECT * FROM schools');
-    const staff = await client.query('SELECT * FROM staff');
-    const schoolClasses = await client.query('SELECT * FROM school_classes');
-    const students = await client.query('SELECT * FROM students');
-    const feeRecords = await client.query('SELECT * FROM fee_records');
-    const assessments = await client.query('SELECT * FROM assessments');
-    const grades = await client.query('SELECT * FROM grades');
-    const attendance = await client.query('SELECT * FROM attendance');
-    const lmsMaterials = await client.query('SELECT * FROM lms_materials');
-    const lmsSubmissions = await client.query('SELECT * FROM lms_submissions');
-    const dormitories = await client.query('SELECT * FROM dormitories');
-    const busRoutes = await client.query('SELECT * FROM bus_routes');
+    await initTables();
+
+    const [
+      schools,
+      staff,
+      schoolClasses,
+      students,
+      feeRecords,
+      assessments,
+      grades,
+      attendance,
+      lmsMaterials,
+      lmsSubmissions,
+      dormitories,
+      busRoutes
+    ] = await Promise.all([
+      pool.query('SELECT * FROM schools'),
+      pool.query('SELECT * FROM staff'),
+      pool.query('SELECT * FROM school_classes'),
+      pool.query('SELECT * FROM students'),
+      pool.query('SELECT * FROM fee_records'),
+      pool.query('SELECT * FROM assessments'),
+      pool.query('SELECT * FROM grades'),
+      pool.query('SELECT * FROM attendance'),
+      pool.query('SELECT * FROM lms_materials'),
+      pool.query('SELECT * FROM lms_submissions'),
+      pool.query('SELECT * FROM dormitories'),
+      pool.query('SELECT * FROM bus_routes')
+    ]);
 
     dbState = {
       schools: schools.rows.map(r => ({
@@ -570,19 +584,20 @@ export async function loadDatabase(): Promise<DatabaseState> {
         currentStopIndex: r.current_stop_index || 0
       }))
     };
-    console.log('[Somake Neon DB] Successfully loaded database state from PostgreSQL.');
+    console.log('[Somake Neon DB] Successfully loaded database state from PostgreSQL (concurrently).');
   } catch (err) {
     console.error('[Somake Neon DB] Failed to load data from database:', err);
-    dbState = { ...initialData };
-  } finally {
-    client.release();
+    if (!dbState || !dbState.schools || dbState.schools.length === 0) {
+      dbState = { ...initialData };
+    }
   }
   return dbState;
 }
 
 export async function saveDatabase(): Promise<void> {
-  const client = await pool.connect();
+  let client;
   try {
+    client = await pool.connect();
     await client.query('BEGIN');
 
     // Truncate tables with CASCADE
@@ -676,10 +691,16 @@ export async function saveDatabase(): Promise<void> {
     await client.query('COMMIT');
     console.log('[Somake Neon DB] Database state saved and committed successfully to PostgreSQL.');
   } catch (err) {
-    await client.query('ROLLBACK');
+    if (client) {
+      try {
+        await client.query('ROLLBACK');
+      } catch (rollbackErr) {
+        console.error('[Somake Neon DB] Rollback failed:', rollbackErr);
+      }
+    }
     console.error('[Somake Neon DB] Transaction failed, did rollback:', err);
   } finally {
-    client.release();
+    if (client) client.release();
   }
 }
 
