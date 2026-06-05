@@ -107,6 +107,10 @@ interface AppContextType {
   handleCreateClass: (e: React.FormEvent) => void;
   handleGradeStudentValue: (gradePayload: any) => void;
   handleMarkAttendanceCell: (studentId: string, status: 'Present' | 'Absent' | 'Excused') => void;
+  handleSaveBulkAttendance: (records: { studentId: string; status: 'Present' | 'Absent' | 'Excused' }[]) => Promise<void>;
+  handleProposeStudentEdit: (studentId: string, updatedFields: any) => Promise<void>;
+  handleApproveStudentChange: (studentId: string) => Promise<void>;
+  handleRejectStudentChange: (studentId: string) => Promise<void>;
   handleAddLmsMaterial: (materialPayload: any) => void;
   handleReviewLmsSubmission: (submissionId: string, approved: boolean, feedback: string) => void;
   handleTriggerBusStop: (routeId: string) => void;
@@ -397,6 +401,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
       setActiveTab('dashboard');
       
+      // Auto-link staff / students dynamically based on updated list
+      if (data.user.role === 'teacher') {
+        const staffList = freshData?.staff || staff;
+        const matchedStaff = staffList.find((s: Staff) => s.email && s.email.toLowerCase() === userData.email.toLowerCase());
+        if (matchedStaff) setSelectedTeacherId(matchedStaff.id);
+      } else if (data.user.role === 'parent_student') {
+        const studentList = freshData?.students || students;
+        const matchedStudent = studentList.find((s: Student) => s.parentEmail && s.parentEmail.toLowerCase() === userData.email.toLowerCase());
+        if (matchedStudent) setSelectedStudentId(matchedStudent.id);
+      }
+      
       showToast(`Account successfully created, welcome ${data.user.name || 'User'}!`, 'success');
       return true;
     } catch (e: any) {
@@ -481,6 +496,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const selectedSchool = schools.find(s => s.id === activeSchoolId);
     const curr: CurriculumType = selectedSchool?.curriculum.includes('CBE') ? 'CBE' : 'Cambridge';
     const studId = String(students.length + 101);
+    const isTeacher = userRole === 'teacher';
+    const statusVal = isTeacher ? 'Pending_Enrollment' : 'Approved';
     
     const payload = {
       id: studId,
@@ -494,12 +511,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
       dormitoryId: studentForm.boardingStatus === 'Boarder' ? (studentForm.dormitoryId || 'dorm-elgon') : undefined,
       busRouteId: studentForm.boardingStatus === 'Day' ? (studentForm.busRouteId || 'route-a') : undefined,
       parentEmail: studentForm.parentEmail || 'parent@skoola.com',
-      parentPhone: studentForm.parentPhone || '0700000000'
+      parentPhone: studentForm.parentPhone || '0700000000',
+      approvalStatus: statusVal
     };
 
     setStudents(prev => [...prev, payload]);
     dispatchActionToServer('create_student', payload);
-    showToast(`Pupil ${studentForm.name} profile completed!`, 'success');
+    
+    if (isTeacher) {
+      showToast(`Enrollment requested for ${studentForm.name}. Pending Admin Approval!`, 'info');
+    } else {
+      showToast(`Pupil ${studentForm.name} profile completed!`, 'success');
+    }
 
     setStudentForm({
       name: '',
@@ -606,6 +629,113 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     dispatchActionToServer('mark_attendance', { studentId, date: activeDate, status });
     showToast('Attendance records saved.', 'success');
+  };
+
+  const handleSaveBulkAttendance = async (records: { studentId: string; status: 'Present' | 'Absent' | 'Excused' }[]) => {
+    const activeDate = '2026-05-28';
+    const payloadList = records.map(r => ({ studentId: r.studentId, date: activeDate, status: r.status }));
+
+    setAttendance(prev => {
+      const next = [...prev];
+      payloadList.forEach(item => {
+        const idx = next.findIndex(a => a.studentId === item.studentId && a.date === activeDate);
+        if (idx !== -1) {
+          next[idx] = item;
+        } else {
+          next.push(item);
+        }
+      });
+      return next;
+    });
+
+    await dispatchActionToServer('mark_attendance', payloadList);
+    showToast(`Attendance register for ${activeDate} saved successfully!`, 'success');
+  };
+
+  const handleProposeStudentEdit = async (studentId: string, updatedFields: any) => {
+    const isTeacher = userRole === 'teacher';
+
+    if (isTeacher) {
+      setStudents(prev => prev.map(s => {
+        if (s.id === studentId) {
+          return {
+            ...s,
+            approvalStatus: 'Pending_Edit',
+            pendingEdits: updatedFields
+          };
+        }
+        return s;
+      }));
+      await dispatchActionToServer('edit_student', {
+        id: studentId,
+        approvalStatus: 'Pending_Edit',
+        pendingEdits: updatedFields
+      });
+      showToast('Student edit proposal submitted. Pending Admin Approval!', 'info');
+    } else {
+      setStudents(prev => prev.map(s => {
+        if (s.id === studentId) {
+          return {
+            ...s,
+            ...updatedFields,
+            approvalStatus: 'Approved',
+            pendingEdits: undefined
+          };
+        }
+        return s;
+      }));
+      await dispatchActionToServer('edit_student', {
+        id: studentId,
+        ...updatedFields,
+        approvalStatus: 'Approved',
+        pendingEdits: null
+      });
+      showToast('Student record updated successfully!', 'success');
+    }
+  };
+
+  const handleApproveStudentChange = async (studentId: string) => {
+    setStudents(prev => prev.map(s => {
+      if (s.id === studentId) {
+        if (s.approvalStatus === 'Pending_Edit' && s.pendingEdits) {
+          return {
+            ...s,
+            ...s.pendingEdits,
+            approvalStatus: 'Approved',
+            pendingEdits: undefined
+          };
+        }
+        return {
+          ...s,
+          approvalStatus: 'Approved'
+        };
+      }
+      return s;
+    }));
+    await dispatchActionToServer('approve_student', { id: studentId });
+    showToast('Request approved and changes committed successfully!', 'success');
+  };
+
+  const handleRejectStudentChange = async (studentId: string) => {
+    const target = students.find(s => s.id === studentId);
+    if (!target) return;
+
+    if (target.approvalStatus === 'Pending_Enrollment') {
+      setStudents(prev => prev.filter(s => s.id !== studentId));
+    } else {
+      setStudents(prev => prev.map(s => {
+        if (s.id === studentId) {
+          return {
+            ...s,
+            approvalStatus: 'Approved',
+            pendingEdits: undefined
+          };
+        }
+        return s;
+      }));
+    }
+    await dispatchActionToServer('reject_student', { id: studentId });
+    showToast('Authorization request was safely declined.', 'info');
   };
 
   const handleAddLmsMaterial = (materialPayload: any) => {
@@ -851,6 +981,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       handleCreateClass,
       handleGradeStudentValue,
       handleMarkAttendanceCell,
+      handleSaveBulkAttendance,
+      handleProposeStudentEdit,
+      handleApproveStudentChange,
+      handleRejectStudentChange,
       handleAddLmsMaterial,
       handleReviewLmsSubmission,
       handleTriggerBusStop,

@@ -18,6 +18,17 @@ export interface Student {
   busRouteId?: string;
   parentEmail: string;
   parentPhone: string;
+  approvalStatus?: 'Approved' | 'Pending_Enrollment' | 'Pending_Edit';
+  pendingEdits?: {
+    name?: string;
+    gender?: 'Male' | 'Female';
+    gradeLevel?: string;
+    boardingStatus?: 'Day' | 'Boarder';
+    dormitoryId?: string;
+    busRouteId?: string;
+    parentEmail?: string;
+    parentPhone?: string;
+  };
 }
 
 export interface Assessment {

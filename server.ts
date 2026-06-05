@@ -157,10 +157,66 @@ registerPost('/api/sync', async (req, res) => {
             dormitoryId: payload.dormitoryId,
             busRouteId: payload.busRouteId,
             parentEmail: payload.parentEmail || 'parent@example.com',
-            parentPhone: payload.parentPhone || '0700000000'
+            parentPhone: payload.parentPhone || '0700000000',
+            approvalStatus: payload.approvalStatus || 'Approved',
+            pendingEdits: payload.pendingEdits
           };
           db.students.push(newStudent);
           syncResults.push({ id: action.id, status: 'success', message: `Student ${newStudent.name} synced.` });
+          break;
+        }
+
+        case 'edit_student': {
+          const idx = db.students.findIndex(s => s.id === payload.id);
+          if (idx !== -1) {
+            db.students[idx] = {
+              ...db.students[idx],
+              ...payload
+            };
+            syncResults.push({ id: action.id, status: 'success', message: `Student ${db.students[idx].name} updated.` });
+          } else {
+            syncResults.push({ id: action.id, status: 'failed', error: 'Student not found.' });
+          }
+          break;
+        }
+
+        case 'approve_student': {
+          const idx = db.students.findIndex(s => s.id === payload.id);
+          if (idx !== -1) {
+            const student = db.students[idx];
+            if (student.approvalStatus === 'Pending_Enrollment') {
+              student.approvalStatus = 'Approved';
+            } else if (student.approvalStatus === 'Pending_Edit' && student.pendingEdits) {
+              db.students[idx] = {
+                ...student,
+                ...student.pendingEdits,
+                approvalStatus: 'Approved',
+                pendingEdits: undefined
+              };
+            } else {
+              student.approvalStatus = 'Approved';
+            }
+            syncResults.push({ id: action.id, status: 'success', message: `Student ${db.students[idx].name} approved.` });
+          } else {
+            syncResults.push({ id: action.id, status: 'failed', error: 'Student not found.' });
+          }
+          break;
+        }
+
+        case 'reject_student': {
+          const idx = db.students.findIndex(s => s.id === payload.id);
+          if (idx !== -1) {
+            const student = db.students[idx];
+            if (student.approvalStatus === 'Pending_Enrollment') {
+              db.students.splice(idx, 1);
+            } else {
+              student.approvalStatus = 'Approved';
+              student.pendingEdits = undefined;
+            }
+            syncResults.push({ id: action.id, status: 'success', message: `Approval request declined.` });
+          } else {
+            syncResults.push({ id: action.id, status: 'failed', error: 'Student not found.' });
+          }
           break;
         }
 
@@ -466,9 +522,28 @@ registerDelete('/api/school/:id', async (req, res) => {
 
 // Authentication endpoints
 registerPost('/api/auth/signup', async (req, res) => {
-  const { email, name, password, role, schoolId } = req.body;
+  let { email, name, password, role, schoolId, newSchoolName, newSchoolCode, newSchoolCurriculum } = req.body;
   if (!email || !name || !password || !role) {
     return res.status(400).json({ error: 'Missing required signup fields' });
+  }
+
+  const db = getDb();
+
+  // If registering a new school
+  if (schoolId === 'new_school' && newSchoolName) {
+    const generatedSchoolId = `school-${db.schools.length + 101}`;
+    const newSchool: School = {
+      id: generatedSchoolId,
+      name: newSchoolName,
+      code: newSchoolCode || `SCH-${Math.floor(100 + Math.random() * 900)}`,
+      curriculum: newSchoolCurriculum || 'CBE (Kenya)',
+      phone: '',
+      email: email,
+      address: ''
+    };
+    db.schools.push(newSchool);
+    schoolId = generatedSchoolId;
+    console.log(`[Somake Server] Auto registered new school: "${newSchoolName}" (${generatedSchoolId}) for signing up user.`);
   }
 
   let client;
@@ -486,7 +561,6 @@ registerPost('/api/auth/signup', async (req, res) => {
 
     // If enrolling as a teacher, register staff profile
     if (role === 'teacher' && schoolId) {
-      const db = getDb();
       const staffId = `staff-${db.staff.length + 101}`;
       const newStaff: Staff = {
         id: staffId,
@@ -497,8 +571,9 @@ registerPost('/api/auth/signup', async (req, res) => {
         phone: '0700000000'
       };
       db.staff.push(newStaff);
-      await saveDatabase();
     }
+
+    await saveDatabase();
 
     res.json({
       success: true,

@@ -7,6 +7,7 @@ import {
   User,
   Mail,
   School,
+  Building,
   ShieldAlert,
   ShieldCheck,
   ArrowRight
@@ -75,12 +76,16 @@ export default function MainLayout() {
   const [loginPassword, setLoginPassword] = useState<string>('');
   const [isAuthenticating, setIsAuthenticating] = useState<boolean>(false);
 
+  const [isNewSchool, setIsNewSchool] = useState(false);
   const [signupForm, setSignupForm] = useState({
     name: '',
     email: '',
     password: '',
     role: 'teacher' as 'super_admin' | 'teacher' | 'parent_student',
-    schoolId: ''
+    schoolId: '',
+    newSchoolName: '',
+    newSchoolCode: '',
+    newSchoolCurriculum: 'CBE (Kenya)'
   });
 
   const onLoginSubmit = async (e: React.FormEvent) => {
@@ -109,7 +114,7 @@ export default function MainLayout() {
   const onSignupSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isAuthenticating) return;
-    const { name, email, password, role, schoolId } = signupForm;
+    const { name, email, password, role, schoolId, newSchoolName, newSchoolCode, newSchoolCurriculum } = signupForm;
     if (!name || !email || !password || !role) {
       showToast('Please fill in all required signup fields', 'error');
       return;
@@ -118,18 +123,35 @@ export default function MainLayout() {
       showToast('Please link this account to a specific school', 'error');
       return;
     }
+    if (schoolId === 'new_school' && !newSchoolName) {
+      showToast('Please fill in the name for your new school', 'error');
+      return;
+    }
 
     setIsAuthenticating(true);
     try {
-      const success = await handleSignup({ name, email, password, role, schoolId });
+      const success = await handleSignup({ 
+        name, 
+        email, 
+        password, 
+        role, 
+        schoolId, 
+        newSchoolName, 
+        newSchoolCode, 
+        newSchoolCurriculum 
+      });
       if (success) {
         setSignupForm({
           name: '',
           email: '',
           password: '',
           role: 'teacher',
-          schoolId: ''
+          schoolId: '',
+          newSchoolName: '',
+          newSchoolCode: '',
+          newSchoolCurriculum: 'CBE (Kenya)'
         });
+        setIsNewSchool(false);
       }
     } catch (err: any) {
       console.error('[SignupSubmit Error]', err);
@@ -318,8 +340,30 @@ export default function MainLayout() {
                 </select>
               </div>
 
-              {/* Conditional link user of roles "teacher" and "parent_student" to specific schools */}
-              {(signupForm.role === 'teacher' || signupForm.role === 'parent_student') && (
+              {/* Register a new school check */}
+              <div className="flex items-center gap-2 py-1 px-1">
+                <input
+                  type="checkbox"
+                  id="chk-signup-new-school"
+                  checked={isNewSchool}
+                  onChange={e => {
+                    const checked = e.target.checked;
+                    setIsNewSchool(checked);
+                    if (checked) {
+                      setSignupForm(prev => ({ ...prev, schoolId: 'new_school' }));
+                    } else {
+                      setSignupForm(prev => ({ ...prev, schoolId: schools[0]?.id || '' }));
+                    }
+                  }}
+                  className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer h-4 w-4"
+                />
+                <label htmlFor="chk-signup-new-school" className="text-xs text-slate-700 font-bold cursor-pointer select-none">
+                  My school is not listed (Register new school)
+                </label>
+              </div>
+
+              {/* If NOT registering a new school AND role is teacher or parent_student */}
+              {!isNewSchool && (signupForm.role === 'teacher' || signupForm.role === 'parent_student') && (
                 <div className="space-y-1 p-3.5 bg-slate-50 border border-slate-150 rounded-2xl">
                   <label className="text-[10px] font-extrabold uppercase text-indigo-700 flex items-center gap-1">
                     <School className="w-3.5 h-3.5 text-indigo-500" /> Link to specific school profile
@@ -338,6 +382,52 @@ export default function MainLayout() {
                   <p className="text-[9.5px] text-slate-400 mt-1.5 leading-normal">
                     This dynamically authorizes your record inside the selected educational ecosystem directory.
                   </p>
+                </div>
+              )}
+
+              {/* If registering a new school */}
+              {isNewSchool && (
+                <div className="space-y-3.5 p-3.5 bg-indigo-50/50 border border-indigo-150 rounded-2xl">
+                  <label className="text-[10.5px] font-black uppercase text-indigo-800 flex items-center gap-1.5">
+                    <Building className="w-4 h-4 text-indigo-600" /> Register New School Identity
+                  </label>
+                  
+                  <div className="space-y-1 block text-left">
+                    <label className="text-[9.5px] font-extrabold uppercase text-slate-450 block">School Name *</label>
+                    <input 
+                      type="text"
+                      required={isNewSchool}
+                      placeholder="e.g. Hillcrest International Grays"
+                      value={signupForm.newSchoolName}
+                      onChange={e => setSignupForm(prev => ({ ...prev, newSchoolName: e.target.value }))}
+                      className="w-full text-xs p-2.5 bg-white border border-slate-200 focus:border-indigo-500 rounded-xl focus:outline-none font-semibold text-slate-800"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3.5 text-left">
+                    <div className="space-y-1">
+                      <label className="text-[9.5px] font-extrabold uppercase text-slate-450 block">School Code</label>
+                      <input 
+                        type="text"
+                        placeholder="e.g. HCG-102 (Auto)"
+                        value={signupForm.newSchoolCode}
+                        onChange={e => setSignupForm(prev => ({ ...prev, newSchoolCode: e.target.value }))}
+                        className="w-full text-xs p-2.5 bg-white border border-slate-200 focus:border-indigo-500 rounded-xl focus:outline-none font-semibold text-slate-800"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[9.5px] font-extrabold uppercase text-slate-450 block">Curriculum *</label>
+                      <select
+                        value={signupForm.newSchoolCurriculum}
+                        onChange={e => setSignupForm(prev => ({ ...prev, newSchoolCurriculum: e.target.value }))}
+                        className="w-full text-xs p-2.5 bg-white border border-slate-200 focus:border-indigo-500 rounded-xl focus:outline-none font-semibold text-slate-800"
+                      >
+                        <option value="CBE (Kenya)">CBE (Kenya)</option>
+                        <option value="Cambridge (International)">Cambridge (International)</option>
+                      </select>
+                    </div>
+                  </div>
                 </div>
               )}
 
