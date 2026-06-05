@@ -30,28 +30,27 @@ const PORT = 3000;
 
 app.use(express.json());
 
-// Normalization middleware for Vercel API routing
-app.use((req, res, next) => {
-  const apiPaths = [
-    '/state',
-    '/sync',
-    '/student',
-    '/grade',
-    '/staff',
-    '/school',
-    '/auth',
-    '/gemini',
-    '/students'
-  ];
-  
-  if (req.url && !req.url.startsWith('/api')) {
-    const matchesApi = apiPaths.some(p => req.url === p || req.url.startsWith(p + '/'));
-    if (matchesApi) {
-      req.url = '/api' + req.url;
-    }
+// Routing helper functions to support both '/api/*' and Vercel-stripped '/*' paths
+const registerGet = (path: string, ...handlers: any[]) => {
+  app.get(path, ...handlers);
+  if (path.startsWith('/api/')) {
+    app.get(path.substring(4), ...handlers);
   }
-  next();
-});
+};
+
+const registerPost = (path: string, ...handlers: any[]) => {
+  app.post(path, ...handlers);
+  if (path.startsWith('/api/')) {
+    app.post(path.substring(4), ...handlers);
+  }
+};
+
+const registerDelete = (path: string, ...handlers: any[]) => {
+  app.delete(path, ...handlers);
+  if (path.startsWith('/api/')) {
+    app.delete(path.substring(4), ...handlers);
+  }
+};
 
 // Database pre-hydration middleware for serverless/cold-starts
 let dbLoadedPromise: Promise<any> | null = null;
@@ -72,6 +71,27 @@ const ensureDbLoaded = async (req: express.Request, res: express.Response, next:
 };
 
 app.use('/api', ensureDbLoaded);
+
+// Intercept non-prefixed API routes to trigger database pre-hydration
+app.use((req, res, next) => {
+  const apiPaths = [
+    '/state',
+    '/sync',
+    '/student',
+    '/grade',
+    '/staff',
+    '/school',
+    '/auth',
+    '/gemini',
+    '/students'
+  ];
+  const pathToCheck = req.path || '';
+  const isApi = apiPaths.some(p => pathToCheck === p || pathToCheck.startsWith(p + '/'));
+  if (isApi) {
+    return ensureDbLoaded(req, res, next);
+  }
+  next();
+});
 
 // Lazy Gemini Initialization Helper
 let geminiClientCache: GoogleGenAI | null = null;
@@ -98,7 +118,7 @@ function getGeminiClient(): GoogleGenAI | null {
 }
 
 // REST APIs
-app.get('/api/state', (req, res) => {
+registerGet('/api/state', (req, res) => {
   const db = getDb();
   res.json({
     students: db.students,
@@ -117,7 +137,7 @@ app.get('/api/state', (req, res) => {
 });
 
 // Sync changes endpoint
-app.post('/api/sync', async (req, res) => {
+registerPost('/api/sync', async (req, res) => {
   const actions: OfflineAction[] = req.body.actions || [];
   console.log(`Received ${actions.length} offline actions for sync.`);
 
@@ -360,7 +380,7 @@ app.post('/api/sync', async (req, res) => {
 });
 
 // Single operations to server database (for online mode edits)
-app.post('/api/student', async (req, res) => {
+registerPost('/api/student', async (req, res) => {
   const student = req.body;
   if (!student.name || !student.gender || !student.curriculum) {
     return res.status(400).json({ error: 'Missing required student fields' });
@@ -388,7 +408,7 @@ app.post('/api/student', async (req, res) => {
   res.json({ success: true, student: newStudent });
 });
 
-app.post('/api/grade', async (req, res) => {
+registerPost('/api/grade', async (req, res) => {
   const payload = req.body;
   const db = getDb();
   const index = db.grades.findIndex(
@@ -417,7 +437,7 @@ app.post('/api/grade', async (req, res) => {
 });
 
 // Real full-stack delete APIs
-app.delete('/api/student/:id', async (req, res) => {
+registerDelete('/api/student/:id', async (req, res) => {
   const { id } = req.params;
   const db = getDb();
   db.students = db.students.filter(s => s.id !== id);
@@ -428,7 +448,7 @@ app.delete('/api/student/:id', async (req, res) => {
   res.json({ success: true, message: `Student ${id} deleted.` });
 });
 
-app.delete('/api/staff/:id', async (req, res) => {
+registerDelete('/api/staff/:id', async (req, res) => {
   const { id } = req.params;
   const db = getDb();
   db.staff = db.staff.filter(s => s.id !== id);
@@ -436,7 +456,7 @@ app.delete('/api/staff/:id', async (req, res) => {
   res.json({ success: true, message: `Staff ${id} deleted.` });
 });
 
-app.delete('/api/school/:id', async (req, res) => {
+registerDelete('/api/school/:id', async (req, res) => {
   const { id } = req.params;
   const db = getDb();
   db.schools = db.schools.filter(s => s.id !== id);
@@ -449,7 +469,7 @@ app.delete('/api/school/:id', async (req, res) => {
 });
 
 // Authentication endpoints
-app.post('/api/auth/signup', async (req, res) => {
+registerPost('/api/auth/signup', async (req, res) => {
   const { email, name, password, role, schoolId } = req.body;
   if (!email || !name || !password || !role) {
     return res.status(400).json({ error: 'Missing required signup fields' });
@@ -495,7 +515,7 @@ app.post('/api/auth/signup', async (req, res) => {
   }
 });
 
-app.post('/api/auth/login', async (req, res) => {
+registerPost('/api/auth/login', async (req, res) => {
   const { email, password } = req.body;
   if (!email || !password) {
     return res.status(400).json({ error: 'Missing email or password' });
@@ -530,7 +550,7 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
-app.post('/api/staff/link', async (req, res) => {
+registerPost('/api/staff/link', async (req, res) => {
   const { staffId, schoolId } = req.body;
   if (!staffId || !schoolId) {
     return res.status(400).json({ error: 'Missing staffId or schoolId' });
@@ -548,7 +568,7 @@ app.post('/api/staff/link', async (req, res) => {
 });
 
 // Gemini endpoint for Report-Card Remark Generation
-app.post('/api/gemini/report-comment', async (req, res) => {
+registerPost('/api/gemini/report-comment', async (req, res) => {
   const { studentId, studentName, curriculum, gradesList, subjectsAvg } = req.body;
 
   // 1. Support the direct database-driven service layer route first
@@ -651,7 +671,7 @@ Use Cambridge-appropriate academic terms like "academic rigor", "testing objecti
 });
 
 // Gemini endpoint for drafting Principal-to-Teacher message
-app.post('/api/gemini/draft-teacher-message', async (req, res) => {
+registerPost('/api/gemini/draft-teacher-message', async (req, res) => {
   const { teacherName, role, purpose, extraContext } = req.body;
 
   if (!teacherName || !purpose) {
@@ -707,7 +727,7 @@ Write in a warm yet authoritative tone. Format it as a clear memo/letter with a 
 });
 
 // CSV bulk-import students and fee balances route
-app.post('/api/students/bulk-import', async (req, res) => {
+registerPost('/api/students/bulk-import', async (req, res) => {
   const { students, feeRecords } = req.body;
   if (!Array.isArray(students) || students.length === 0) {
     return res.status(400).json({ error: 'No student records received' });
