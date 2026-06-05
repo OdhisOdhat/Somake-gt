@@ -319,7 +319,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       
       if (data.user.schoolId) {
         setActiveSchoolId(data.user.schoolId);
+      } else if (schools.length > 0) {
+        setActiveSchoolId(schools[0].id);
       }
+      setActiveTab('dashboard');
       
       // Auto-link staff / students dynamically based on updated list
       if (data.user.role === 'teacher') {
@@ -375,7 +378,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       
       if (data.user.schoolId) {
         setActiveSchoolId(data.user.schoolId);
+      } else if (schools.length > 0) {
+        setActiveSchoolId(schools[0].id);
       }
+      setActiveTab('dashboard');
       
       await fetchStateFromServer();
       

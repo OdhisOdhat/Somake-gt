@@ -448,33 +448,18 @@ export async function loadDatabase(): Promise<DatabaseState> {
 
   const client = await pool.connect();
   try {
-    const [
-      schools,
-      staff,
-      schoolClasses,
-      students,
-      feeRecords,
-      assessments,
-      grades,
-      attendance,
-      lmsMaterials,
-      lmsSubmissions,
-      dormitories,
-      busRoutes
-    ] = await Promise.all([
-      client.query('SELECT * FROM schools'),
-      client.query('SELECT * FROM staff'),
-      client.query('SELECT * FROM school_classes'),
-      client.query('SELECT * FROM students'),
-      client.query('SELECT * FROM fee_records'),
-      client.query('SELECT * FROM assessments'),
-      client.query('SELECT * FROM grades'),
-      client.query('SELECT * FROM attendance'),
-      client.query('SELECT * FROM lms_materials'),
-      client.query('SELECT * FROM lms_submissions'),
-      client.query('SELECT * FROM dormitories'),
-      client.query('SELECT * FROM bus_routes')
-    ]);
+    const schools = await client.query('SELECT * FROM schools');
+    const staff = await client.query('SELECT * FROM staff');
+    const schoolClasses = await client.query('SELECT * FROM school_classes');
+    const students = await client.query('SELECT * FROM students');
+    const feeRecords = await client.query('SELECT * FROM fee_records');
+    const assessments = await client.query('SELECT * FROM assessments');
+    const grades = await client.query('SELECT * FROM grades');
+    const attendance = await client.query('SELECT * FROM attendance');
+    const lmsMaterials = await client.query('SELECT * FROM lms_materials');
+    const lmsSubmissions = await client.query('SELECT * FROM lms_submissions');
+    const dormitories = await client.query('SELECT * FROM dormitories');
+    const busRoutes = await client.query('SELECT * FROM bus_routes');
 
     dbState = {
       schools: schools.rows.map(r => ({
