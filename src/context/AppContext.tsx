@@ -278,8 +278,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       } else if (data.schools && data.schools.length > 0 && !activeSchoolId) {
         setActiveSchoolId(data.schools[0].id);
       }
+      return data;
     } catch (e) {
       console.error(e);
+      return null;
     }
   };
 
@@ -311,6 +313,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       
       const data = await resp.json();
       console.log('[Skoola Auth] Login success! User payload:', data.user);
+      
+      const freshData = await fetchStateFromServer();
+      
       setCurrentUser(data.user);
       setUserEmail(data.user.email);
       setUserRole(data.user.role);
@@ -319,6 +324,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       
       if (data.user.schoolId) {
         setActiveSchoolId(data.user.schoolId);
+      } else if (freshData && freshData.schools && freshData.schools.length > 0) {
+        setActiveSchoolId(freshData.schools[0].id);
       } else if (schools.length > 0) {
         setActiveSchoolId(schools[0].id);
       }
@@ -326,10 +333,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
       
       // Auto-link staff / students dynamically based on updated list
       if (data.user.role === 'teacher') {
-        const matchedStaff = staff.find(s => s.email && s.email.toLowerCase() === email.toLowerCase());
+        const staffList = freshData?.staff || staff;
+        const matchedStaff = staffList.find((s: Staff) => s.email && s.email.toLowerCase() === email.toLowerCase());
         if (matchedStaff) setSelectedTeacherId(matchedStaff.id);
       } else if (data.user.role === 'parent_student') {
-        const matchedStudent = students.find(s => s.parentEmail && s.parentEmail.toLowerCase() === email.toLowerCase());
+        const studentList = freshData?.students || students;
+        const matchedStudent = studentList.find((s: Student) => s.parentEmail && s.parentEmail.toLowerCase() === email.toLowerCase());
         if (matchedStudent) setSelectedStudentId(matchedStudent.id);
       }
       
@@ -370,6 +379,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       
       const data = await resp.json();
       console.log('[Skoola Auth] Signup success! User payload:', data.user);
+      
+      const freshData = await fetchStateFromServer();
+      
       setCurrentUser(data.user);
       setUserEmail(data.user.email);
       setUserRole(data.user.role);
@@ -378,12 +390,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
       
       if (data.user.schoolId) {
         setActiveSchoolId(data.user.schoolId);
+      } else if (freshData && freshData.schools && freshData.schools.length > 0) {
+        setActiveSchoolId(freshData.schools[0].id);
       } else if (schools.length > 0) {
         setActiveSchoolId(schools[0].id);
       }
       setActiveTab('dashboard');
-      
-      await fetchStateFromServer();
       
       showToast(`Account successfully created, welcome ${data.user.name || 'User'}!`, 'success');
       return true;
