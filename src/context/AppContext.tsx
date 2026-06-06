@@ -472,6 +472,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     e.preventDefault();
     if (!schoolForm.name || !schoolForm.code) return;
 
+    const isSuperAdmin = userRole === 'super_admin';
+    const activeTeacherProfile = staff?.find(st => st.id === selectedTeacherId);
+    const isAppointedSchoolAdmin = userRole === 'teacher' && activeTeacherProfile && (activeTeacherProfile.role === 'Head Teacher' || activeTeacherProfile.role === 'Registrar');
+    if (!isSuperAdmin && !isAppointedSchoolAdmin) {
+      showToast('Access Restricted: Only Super-Administrators or appointed School Admins have rights to register schools.', 'error');
+      return;
+    }
+
     const schId = `school-${schools.length + 101}`;
     const payload = { ...schoolForm, id: schId };
 

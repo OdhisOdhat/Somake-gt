@@ -561,6 +561,9 @@ export default function MainLayout() {
                     setSelectedTeacherId(e.target.value);
                     const s = staff.find(st => st.id === e.target.value);
                     showToast(`Acting as Teacher ${s?.name || ''}`);
+                    if (s && s.schoolId) {
+                      setActiveSchoolId(s.schoolId);
+                    }
                   }}
                   className="p-1.5 border border-slate-200 bg-[#f8fafc] rounded-lg font-black text-xs text-slate-800 focus:outline-none focus:border-indigo-500 cursor-pointer"
                 >
@@ -1009,6 +1012,9 @@ export default function MainLayout() {
                     <option key={sch.id} value={sch.id}>{sch.name}</option>
                   ))}
                 </select>
+                <p className="text-[9.5px] text-slate-450 mt-1.5 leading-normal">
+                  ⚠️ <strong>Structural Rule:</strong> A staff member is bound exclusively to a single school directory workspace. One school can host many teachers, but one teacher cannot be concurrent in multiple school spaces.
+                </p>
               </div>
 
               <div className="flex justify-end gap-2.5 pt-4 border-t border-slate-100">

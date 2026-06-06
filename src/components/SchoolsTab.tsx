@@ -1,8 +1,9 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Building, Plus, Trash2, ArrowRight, ShieldCheck, FileSpreadsheet } from 'lucide-react';
+import { Building, Plus, Trash2, ArrowRight, ShieldCheck, FileSpreadsheet, Lock } from 'lucide-react';
 import { School } from '../types';
 import { downloadSchoolTemplate } from '../utils/templateGenerator';
+import { useAppContext } from '../context/AppContext';
 
 interface SchoolsTabProps {
   schools: School[];
@@ -22,6 +23,13 @@ export default function SchoolsTab({
   onDeleteSchool
 }: SchoolsTabProps) {
   const navigate = useNavigate();
+  const { userRole, staff, selectedTeacherId } = useAppContext();
+
+  const isSuperAdmin = userRole === 'super_admin';
+  const activeTeacherProfile = staff?.find(st => st.id === selectedTeacherId);
+  const isAppointedSchoolAdmin = userRole === 'teacher' && activeTeacherProfile && (activeTeacherProfile.role === 'Head Teacher' || activeTeacherProfile.role === 'Registrar');
+  const canAddSchool = isSuperAdmin || isAppointedSchoolAdmin;
+
   return (
     <div id="skoola-schools-tab-root" className="space-y-6">
       
@@ -33,22 +41,31 @@ export default function SchoolsTab({
         </div>
 
         <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
-          <button
-            onClick={downloadSchoolTemplate}
-            className="border border-emerald-200 bg-emerald-55/40 hover:bg-emerald-100/70 text-emerald-800 font-extrabold text-xs px-4 py-2.5 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer"
-          >
-            <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
-            Download XLSX Template
-          </button>
+          {isSuperAdmin && (
+            <button
+              onClick={downloadSchoolTemplate}
+              className="border border-emerald-200 bg-emerald-55/40 hover:bg-emerald-100/70 text-emerald-800 font-extrabold text-xs px-4 py-2.5 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer"
+            >
+              <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+              Download XLSX Template
+            </button>
+          )}
 
-          <button
-            id="btn-schools-add-school"
-            onClick={onNewSchoolClick}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-4.5 py-2.5 rounded-xl shadow-sm transition-all flex items-center gap-1.5 cursor-pointer"
-          >
-            <Plus className="w-4 h-4 stroke-[2.2]" />
-            New school
-          </button>
+          {canAddSchool ? (
+            <button
+              id="btn-schools-add-school"
+              onClick={onNewSchoolClick}
+              className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-4.5 py-2.5 rounded-xl shadow-sm transition-all flex items-center gap-1.5 cursor-pointer animate-in fade-in"
+            >
+              <Plus className="w-4 h-4 stroke-[2.2]" />
+              New school
+            </button>
+          ) : (
+            <div className="border border-slate-200 p-2 text-slate-400 bg-slate-50/50 rounded-xl text-[11px] font-bold flex items-center gap-1.5 cursor-not-allowed">
+              <Lock className="w-3.5 h-3.5" />
+              New school restricted
+            </div>
+          )}
         </div>
       </div>
 
@@ -132,13 +149,19 @@ export default function SchoolsTab({
                     <ArrowRight className="w-3.5 h-3.5" />
                   </button>
 
-                  <button
-                    onClick={() => onDeleteSchool(sch.id)}
-                    title="Delete school profile"
-                    className="p-2 border border-slate-200 text-slate-450 hover:text-rose-600 hover:border-rose-100 hover:bg-rose-50/50 rounded-xl transition-all"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                  {isSuperAdmin ? (
+                    <button
+                      onClick={() => onDeleteSchool(sch.id)}
+                      title="Delete school profile"
+                      className="p-2 border border-slate-200 text-slate-450 hover:text-rose-600 hover:border-rose-100 hover:bg-rose-50/50 rounded-xl transition-all cursor-pointer"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  ) : (
+                    <div className="p-2 border border-slate-100 text-slate-300 rounded-xl cursor-not-allowed" title="Deletion Restricted to Global Admins">
+                      <Lock className="w-4 h-4" />
+                    </div>
+                  )}
                 </div>
 
               </div>

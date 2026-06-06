@@ -41,9 +41,14 @@ export default function SkoolaSidebar({
   onSignOut
 }: SkoolaSidebarProps) {
   const navigate = useNavigate();
-  const { userRole, showToast, darkMode, toggleDarkMode } = useAppContext();
+  const { userRole, showToast, darkMode, toggleDarkMode, staff, selectedTeacherId } = useAppContext();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const activeSchool = schools.find(s => s.id === activeSchoolId);
+
+  const isSuperAdmin = userRole === 'super_admin';
+  const activeTeacherProfile = staff?.find(st => st.id === selectedTeacherId);
+  const isAppointedSchoolAdmin = userRole === 'teacher' && activeTeacherProfile && (activeTeacherProfile.role === 'Head Teacher' || activeTeacherProfile.role === 'Registrar');
+  const canSwitchSchools = isSuperAdmin || isAppointedSchoolAdmin;
 
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
@@ -58,6 +63,9 @@ export default function SkoolaSidebar({
   const isTabLocked = (tabId: string) => {
     if (userRole === 'super_admin') return false;
     if (userRole === 'teacher') {
+      if (tabId === 'schools' && isAppointedSchoolAdmin) {
+        return false;
+      }
       return ['schools', 'staff', 'fees'].includes(tabId);
     }
     if (userRole === 'parent_student') {
@@ -80,16 +88,31 @@ export default function SkoolaSidebar({
       <div className="p-4 border-b border-slate-100 relative">
         <button
           id="school-select-dropdown-trigger"
-          onClick={() => setDropdownOpen(!dropdownOpen)}
-          className="w-full flex items-center justify-between px-3 py-2.5 bg-[#f8fafc]/80 border border-slate-200 hover:border-slate-300 rounded-xl text-left text-xs font-semibold text-slate-700 transition-all shadow-sm"
+          onClick={() => {
+            if (!canSwitchSchools) {
+              showToast("Access Restricted: Other staff are restricted to their assigned school profile and cannot switch.", "error");
+              return;
+            }
+            setDropdownOpen(!dropdownOpen);
+          }}
+          className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-left text-xs font-semibold transition-all shadow-sm ${
+            canSwitchSchools 
+              ? 'bg-[#f8fafc]/80 border border-slate-200 hover:border-slate-300 text-slate-700 cursor-pointer' 
+              : 'bg-slate-50 border border-slate-150 text-slate-400 cursor-not-allowed'
+          }`}
         >
-          <span className="truncate">
+          <span className="truncate flex items-center gap-1.5 font-bold">
+            {!canSwitchSchools && <Lock className="w-3.5 h-3.5 text-slate-400 shrink-0" />}
             {activeSchool ? activeSchool.name : 'No schools yet'}
           </span>
-          <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
+          {canSwitchSchools ? (
+            <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
+          ) : (
+            <Lock className="w-3.5 h-3.5 text-slate-300" />
+          )}
         </button>
 
-        {dropdownOpen && (
+        {dropdownOpen && canSwitchSchools && (
           <div 
             id="school-dropdown-menu" 
             className="absolute left-4 right-4 mt-2 bg-white border border-slate-200 rounded-xl shadow-xl z-50 py-1 overflow-hidden"
@@ -120,19 +143,21 @@ export default function SkoolaSidebar({
                 ))
               )}
             </div>
-            <div className="border-t border-slate-100 p-1 bg-slate-50">
-              <button
-                id="btn-sidebar-new-school"
-                onClick={() => {
-                  onNewSchoolClick();
-                  setDropdownOpen(false);
-                }}
-                className="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 text-[11px] font-bold text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50/50 rounded-lg transition-colors"
-              >
-                <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
-                New School
-              </button>
-            </div>
+            {isSuperAdmin && (
+              <div className="border-t border-slate-100 p-1 bg-slate-50">
+                <button
+                  id="btn-sidebar-new-school"
+                  onClick={() => {
+                    onNewSchoolClick();
+                    setDropdownOpen(false);
+                  }}
+                  className="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 text-[11px] font-bold text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50/50 rounded-lg transition-colors"
+                >
+                  <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+                  New School
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>
