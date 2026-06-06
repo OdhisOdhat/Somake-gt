@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { School, Student, Staff, SchoolClass, FeeRecord, StudentGrade, AttendanceRecord, Assessment } from '../types';
 import CbeAnalyticsChart from './CbeAnalyticsChart';
+import { getThemePalette } from '../utils/theme';
 
 interface DashboardTabProps {
   schools: School[];
@@ -53,6 +54,7 @@ export default function DashboardTab({
   selectedStudentId = '1'
 }: DashboardTabProps) {
   const activeSchool = schools.find(s => s.id === activeSchoolId);
+  const schPalette = getThemePalette(activeSchool?.themeColor);
 
   // 1. NO SCHOOL ESTABLISHED FALLBACK (Saves from blank states)
   if (!activeSchool) {
@@ -618,9 +620,19 @@ export default function DashboardTab({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-xl font-black text-[#1e1b4b] tracking-tight flex items-center gap-1.5 leading-none">
-            {activeSchool.name} <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 animate-pulse">Active Workspace</span>
+            {activeSchool.name} 
+            <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full animate-pulse transition-all ${
+              schPalette.badge
+            }`}>
+              Active Workspace
+            </span>
           </h2>
           <p className="text-xs text-slate-500 mt-1">
+            {activeSchool.slogan && (
+              <span className="italic font-semibold text-slate-600 block mb-1">
+                "{activeSchool.slogan}"
+              </span>
+            )}
             Running <strong>{activeSchool.curriculum}</strong> framework. Terminal code: {activeSchool.code}
           </p>
         </div>

@@ -352,7 +352,7 @@ registerPost('/api/sync', async (req, res) => {
         }
 
         case 'update_school': {
-          const { id, name, phone, email, address, logoUrl } = payload;
+          const { id, name, phone, email, address, logoUrl, slogan, themeColor } = payload;
           const idx = db.schools.findIndex(s => s.id === id);
           if (idx !== -1) {
             db.schools[idx] = {
@@ -361,9 +361,11 @@ registerPost('/api/sync', async (req, res) => {
               phone: phone !== undefined ? phone : db.schools[idx].phone,
               email: email !== undefined ? email : db.schools[idx].email,
               address: address !== undefined ? address : db.schools[idx].address,
-              logoUrl: logoUrl !== undefined ? logoUrl : db.schools[idx].logoUrl
+              logoUrl: logoUrl !== undefined ? logoUrl : db.schools[idx].logoUrl,
+              slogan: slogan !== undefined ? slogan : db.schools[idx].slogan,
+              themeColor: themeColor !== undefined ? themeColor : db.schools[idx].themeColor
             };
-            syncResults.push({ id: action.id, status: 'success', message: `School ${id} profile updated.` });
+            syncResults.push({ id: action.id, status: 'success', message: `School ${id} profile and brand updated.` });
           } else {
             syncResults.push({ id: action.id, status: 'error', message: `School ID ${id} not found.` });
           }

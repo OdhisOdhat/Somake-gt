@@ -18,6 +18,7 @@ import {
 import { School } from '../types';
 import { downloadSchoolTemplate } from '../utils/templateGenerator';
 import { useAppContext } from '../context/AppContext';
+import { getThemePalette } from '../utils/theme';
 
 interface SchoolsTabProps {
   schools: School[];
@@ -51,7 +52,9 @@ export default function SchoolsTab({
     phone: '',
     email: '',
     address: '',
-    logoUrl: ''
+    logoUrl: '',
+    slogan: '',
+    themeColor: ''
   });
   const [isDragOver, setIsDragOver] = useState(false);
 
@@ -62,7 +65,9 @@ export default function SchoolsTab({
       phone: sch.phone || '',
       email: sch.email || '',
       address: sch.address || '',
-      logoUrl: sch.logoUrl || ''
+      logoUrl: sch.logoUrl || '',
+      slogan: sch.slogan || '',
+      themeColor: sch.themeColor || 'indigo'
     });
   };
 
@@ -180,6 +185,7 @@ export default function SchoolsTab({
           {schools.map(sch => {
             const isActive = sch.id === activeSchoolId;
             const canCustomizeSchool = isSuperAdmin || (isAppointedSchoolAdmin && (!activeTeacherProfile?.schoolId || activeTeacherProfile.schoolId === sch.id));
+            const schPalette = getThemePalette(sch.themeColor);
             
             return (
               <div 
@@ -199,10 +205,10 @@ export default function SchoolsTab({
                   <div className="flex items-start gap-3">
                     {sch.logoUrl ? (
                       <img 
-                        src={sch.logoUrl} 
-                        alt={`${sch.name} Logo`} 
-                        className="w-12 h-12 rounded-xl object-contain border border-slate-200 bg-slate-50 shrink-0 shadow-xs" 
-                        referrerPolicy="no-referrer"
+                      src={sch.logoUrl} 
+                      alt={`${sch.name} Logo`} 
+                      className="w-12 h-12 rounded-xl object-contain border border-slate-200 bg-slate-50 shrink-0 shadow-xs" 
+                      referrerPolicy="no-referrer"
                       />
                     ) : (
                       <div className="w-12 h-12 rounded-xl bg-indigo-55 text-indigo-700 flex items-center justify-center font-black text-lg border border-indigo-100 shrink-0 uppercase">
@@ -211,9 +217,22 @@ export default function SchoolsTab({
                     )}
                     <div>
                       <h3 className="text-[14px] font-black text-slate-900 line-clamp-2 pr-12">{sch.name}</h3>
-                      <p className="text-[10px] font-mono font-bold text-slate-400 mt-0.5 uppercase tracking-wider">{sch.code}</p>
+                      <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
+                        <span className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider">{sch.code}</span>
+                        {sch.themeColor && sch.themeColor !== 'indigo' && (
+                          <span className={`text-[8px] px-1.5 py-0.5 rounded-full font-bold uppercase ${schPalette.badge}`}>
+                            🎨 {schPalette.name}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
+
+                  {sch.slogan && (
+                    <div className="bg-slate-50 border-l-2 border-slate-300 p-2 text-slate-500 italic text-[11px] font-semibold rounded-r-lg">
+                      "{sch.slogan}"
+                    </div>
+                  )}
 
                   {/* Attributes list */}
                   <div className="space-y-2.5 text-xs text-slate-600 border-t border-b border-slate-100 py-3.5 leading-relaxed font-semibold">
@@ -309,6 +328,12 @@ export default function SchoolsTab({
             </div>
 
             <form onSubmit={handleSaveEdit} className="space-y-4 text-xs font-semibold text-left">
+              {isSuperAdmin && (
+                <div id="super-admin-branding-notify" className="bg-amber-50 border border-amber-100 p-3 rounded-xl text-[11px] text-amber-800 leading-normal font-semibold">
+                  ✨ <strong>Super Admin Delegation Mode:</strong> You are customizing and branding this school portal profile metadata directly on behalf of the registered School Administrator.
+                </div>
+              )}
+
               <div>
                 <label className="text-[10px] uppercase font-black text-slate-450 mb-1 block">School Registered Name</label>
                 <input
@@ -350,6 +375,34 @@ export default function SchoolsTab({
                   className="w-full p-2.5 bg-slate-50 border border-slate-200 focus:border-indigo-500 focus:outline-hidden rounded-xl font-bold text-slate-705"
                   placeholder="e.g. Westlands, Nairobi"
                 />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3.5">
+                <div>
+                  <label className="text-[10px] uppercase font-black text-slate-450 mb-1 block">Motto / Slogan</label>
+                  <input
+                    type="text"
+                    value={editForm.slogan}
+                    onChange={e => setEditForm({ ...editForm, slogan: e.target.value })}
+                    placeholder="e.g. Strive for Academic Excellence"
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 focus:border-indigo-500 focus:outline-hidden rounded-xl font-bold text-slate-705"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] uppercase font-black text-slate-450 mb-1 block">Portal Accent Theme</label>
+                  <select
+                    value={editForm.themeColor}
+                    onChange={e => setEditForm({ ...editForm, themeColor: e.target.value })}
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 focus:border-indigo-500 focus:outline-hidden rounded-xl font-bold text-slate-705"
+                  >
+                    <option value="indigo">Indigo (Skoola Default)</option>
+                    <option value="emerald">Royal Emerald</option>
+                    <option value="rose">Warm Rose</option>
+                    <option value="amber">Bright Amber</option>
+                    <option value="sky">Ocean Sky Blue</option>
+                    <option value="violet">Regal Violet</option>
+                  </select>
+                </div>
               </div>
 
               {/* Logo Drag-and-Drop Area */}

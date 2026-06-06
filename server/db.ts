@@ -281,15 +281,24 @@ async function initTables() {
         phone TEXT DEFAULT '',
         email TEXT DEFAULT '',
         address TEXT DEFAULT '',
-        logo_url TEXT DEFAULT ''
+        logo_url TEXT DEFAULT '',
+        slogan TEXT DEFAULT '',
+        theme_color TEXT DEFAULT ''
       );
     `);
 
-    // Ensure logo_url column exists in existing tables too
+    // Ensure logo_url, slogan, theme_color columns exist in existing tables too
     try {
       await client.query("ALTER TABLE schools ADD COLUMN IF NOT EXISTS logo_url TEXT DEFAULT ''");
     } catch (e) {
       console.log('logo_url column already exists or alter table not supported:', e);
+    }
+
+    try {
+      await client.query("ALTER TABLE schools ADD COLUMN IF NOT EXISTS slogan TEXT DEFAULT ''");
+      await client.query("ALTER TABLE schools ADD COLUMN IF NOT EXISTS theme_color TEXT DEFAULT ''");
+    } catch (e) {
+      console.log('slogan/theme_color columns already exist or alter table not supported:', e);
     }
 
     await client.query(`
@@ -507,8 +516,8 @@ async function initTables() {
       // Seed schools
       for (const item of initialData.schools) {
         await client.query(
-          'INSERT INTO schools (id, name, code, curriculum, phone, email, address, logo_url) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
-          [item.id, item.name, item.code, item.curriculum, item.phone, item.email, item.address, item.logoUrl || '']
+          'INSERT INTO schools (id, name, code, curriculum, phone, email, address, logo_url, slogan, theme_color) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)',
+          [item.id, item.name, item.code, item.curriculum, item.phone, item.email, item.address, item.logoUrl || '', item.slogan || '', item.themeColor || '']
         );
       }
       // Seed staff
@@ -692,7 +701,9 @@ export async function loadDatabase(): Promise<DatabaseState> {
         phone: r.phone || '',
         email: r.email || '',
         address: r.address || '',
-        logoUrl: r.logo_url || ''
+        logoUrl: r.logo_url || '',
+        slogan: r.slogan || '',
+        themeColor: r.theme_color || ''
       })),
       staff: staff.rows.map(r => ({
         id: r.id,
@@ -877,8 +888,8 @@ export async function saveDatabase(): Promise<void> {
     // Refill schools
     for (const item of dbState.schools) {
       await client.query(
-        'INSERT INTO schools (id, name, code, curriculum, phone, email, address, logo_url) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
-        [item.id, item.name, item.code, item.curriculum, item.phone || '', item.email || '', item.address || '', item.logoUrl || '']
+        'INSERT INTO schools (id, name, code, curriculum, phone, email, address, logo_url, slogan, theme_color) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)',
+        [item.id, item.name, item.code, item.curriculum, item.phone || '', item.email || '', item.address || '', item.logoUrl || '', item.slogan || '', item.themeColor || '']
       );
     }
     // Refill staff

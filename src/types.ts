@@ -151,6 +151,8 @@ export interface School {
   email: string;
   address: string;
   logoUrl?: string;
+  slogan?: string;
+  themeColor?: string;
 }
 
 export interface Staff {
