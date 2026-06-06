@@ -11,6 +11,7 @@ export default async function (req: any, res: any) {
       try {
         // Attempt to import the compiled production server bundle
         console.log("[Somake Vercel Proxy] Trying to load compiled server...");
+        // @ts-ignore
         const serverModule = await import('../dist/server.cjs');
         handler = serverModule.default || serverModule;
         console.log("[Somake Vercel Proxy] Compiled server loaded successfully!");

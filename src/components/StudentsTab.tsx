@@ -16,7 +16,9 @@ import {
   UserPlus,
   UploadCloud,
   FileSpreadsheet,
-  X
+  X,
+  Check,
+  ShieldAlert
 } from 'lucide-react';
 import { Student, Assessment, StudentGrade, School } from '../types';
 import NoSchoolSelected from './NoSchoolSelected';
@@ -47,7 +49,27 @@ export default function StudentsTab({
   onGenerateAiComment
 }: StudentsTabProps) {
   const activeSchool = schools.find(s => s.id === activeSchoolId);
-  const { userRole, showToast, fetchStateFromServer } = useAppContext();
+  const { 
+    userRole, 
+    showToast, 
+    fetchStateFromServer,
+    handleProposeStudentEdit,
+    handleApproveStudentChange,
+    handleRejectStudentChange
+  } = useAppContext();
+
+  // Student Edit Dialog Form states
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editForm, setEditForm] = useState({
+    name: '',
+    gender: 'Male' as 'Male' | 'Female',
+    gradeLevel: 'Grade 4',
+    boardingStatus: 'Day' as 'Day' | 'Boarder',
+    dormitoryId: 'dorm-elgon',
+    busRouteId: 'route-a',
+    parentEmail: '',
+    parentPhone: ''
+  });
 
   if (!activeSchoolId || !activeSchool) {
     return <NoSchoolSelected title="Select a school profile" />;
@@ -290,20 +312,20 @@ export default function StudentsTab({
             <button
               id="btn-students-add-student"
               onClick={() => {
-                if (userRole !== 'super_admin') {
-                  showToast("Access Restricted: Only Super Administrators have rights to register new student records.", "error");
+                if (userRole !== 'super_admin' && userRole !== 'teacher') {
+                  showToast("Access Restricted: Only Super Administrators or Class Teachers have rights to register student records.", "error");
                   return;
                 }
                 onAddNewStudent();
               }}
               className={`w-full sm:w-auto shrink-0 font-bold text-xs px-4 py-2.5 rounded-xl shadow-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                userRole !== 'super_admin'
+                userRole !== 'super_admin' && userRole !== 'teacher'
                   ? 'bg-slate-100/70 border border-slate-200 text-slate-400 cursor-not-allowed'
                   : 'bg-indigo-600 hover:bg-indigo-700 text-white'
               }`}
             >
               <UserPlus className="w-4 h-4" />
-              Enroll pupil {userRole !== 'super_admin' && '🔒'}
+              Enroll pupil {(userRole !== 'super_admin' && userRole !== 'teacher') && '🔒'}
             </button>
           </div>
         </div>
@@ -444,13 +466,23 @@ export default function StudentsTab({
                     }`}
                   >
                     <div className="min-w-0">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-xs font-black text-slate-900 truncate">{stud.name}</span>
                         <span className={`text-[9px] font-bold px-2 py-0.5 rounded-md ${
                           stud.boardingStatus === 'Boarder' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-900'
                         }`}>
                           {stud.boardingStatus}
                         </span>
+                        {stud.approvalStatus === 'Pending_Enrollment' && (
+                          <span className="text-[8.5px] font-black uppercase text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded-md">
+                            Pending Enroll Approval
+                          </span>
+                        )}
+                        {stud.approvalStatus === 'Pending_Edit' && (
+                          <span className="text-[8.5px] font-black uppercase text-indigo-750 bg-indigo-50 border border-indigo-200 px-1.5 py-0.5 rounded-md">
+                            Proposals Pending
+                          </span>
+                        )}
                       </div>
                       <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] text-slate-450 mt-1 font-semibold">
                         <span className="font-mono text-slate-400">{stud.admissionNo}</span>
@@ -494,24 +526,122 @@ export default function StudentsTab({
                 </p>
               </div>
 
-              <button
-                onClick={() => {
-                  if (userRole !== 'super_admin') {
-                    showToast("Access Restricted: Academic profile deletion requires Super Administrator authentication.", "error");
-                    return;
-                  }
-                  onDeleteStudent(selectedStudent.id);
-                  setSelectedStudentId(null);
-                }}
-                className={`text-[10.5px] font-bold px-2 my-0.5 py-1 rounded-lg transition-all border ${
-                  userRole !== 'super_admin'
-                    ? 'bg-slate-50 border-slate-200 text-slate-400 cursor-not-allowed opacity-60'
-                    : 'text-slate-500 hover:text-rose-600 border-slate-200 hover:border-rose-100 hover:bg-rose-50'
-                }`}
-              >
-                Delete Profile {userRole !== 'super_admin' && '🔒'}
-              </button>
+              <div className="flex flex-col gap-1.5 items-end shrink-0">
+                <button
+                  onClick={() => {
+                    setEditForm({
+                      name: selectedStudent.name || '',
+                      gender: selectedStudent.gender || 'Male',
+                      gradeLevel: selectedStudent.gradeLevel || 'Grade 4',
+                      boardingStatus: selectedStudent.boardingStatus || 'Day',
+                      dormitoryId: selectedStudent.dormitoryId || 'dorm-elgon',
+                      busRouteId: selectedStudent.busRouteId || 'route-a',
+                      parentEmail: selectedStudent.parentEmail || '',
+                      parentPhone: selectedStudent.parentPhone || ''
+                    });
+                    setShowEditModal(true);
+                  }}
+                  className="w-full text-[10.5px] font-black text-indigo-700 hover:text-indigo-850 bg-indigo-50/50 hover:bg-indigo-50 border border-indigo-150 px-2.5 py-1 rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1"
+                >
+                  ✏️ Edit Profile
+                </button>
+                <button
+                  onClick={() => {
+                    if (userRole !== 'super_admin') {
+                      showToast("Access Restricted: Academic profile deletion requires Super Administrator authentication.", "error");
+                      return;
+                    }
+                    onDeleteStudent(selectedStudent.id);
+                    setSelectedStudentId(null);
+                  }}
+                  className={`text-[10.5px] font-bold px-2 py-1 rounded-lg transition-all border ${
+                    userRole !== 'super_admin'
+                      ? 'bg-slate-50 border-slate-200 text-slate-400 cursor-not-allowed opacity-60'
+                      : 'text-slate-500 hover:text-rose-600 border-slate-200 hover:border-rose-100 hover:bg-rose-50'
+                  }`}
+                >
+                  Delete Profile {userRole !== 'super_admin' && '🔒'}
+                </button>
+              </div>
             </div>
+
+            {/* Approval Banner for Admins */}
+            {(selectedStudent.approvalStatus === 'Pending_Enrollment' || selectedStudent.approvalStatus === 'Pending_Edit') && (
+              <div className="p-4 bg-amber-50/60 border border-amber-200 rounded-2xl space-y-3.5">
+                <div className="flex items-start gap-2.5">
+                  <ShieldAlert className="w-5 h-5 text-amber-600 shrink-0 mt-0.5 animate-bounce" />
+                  <div>
+                    <h4 className="text-[11.5px] font-black text-amber-900 tracking-tight">
+                      {selectedStudent.approvalStatus === 'Pending_Enrollment' 
+                        ? 'Enrollment Authorization Required' 
+                        : 'Profile Update Authorization Required'}
+                    </h4>
+                    <p className="text-[10px] text-slate-500 leading-relaxed font-semibold mt-0.5">
+                      {selectedStudent.approvalStatus === 'Pending_Enrollment'
+                        ? 'A class teacher requested to enroll this pupil register. Admins must authorize the creation.'
+                        : 'A class teacher proposed profile alterations. Review the side-by-side differentials below.'}
+                    </p>
+                  </div>
+                </div>
+
+                {selectedStudent.approvalStatus === 'Pending_Edit' && selectedStudent.pendingEdits && (
+                  <div className="bg-white border border-slate-150 rounded-xl p-3 text-[10px] leading-normal space-y-2 font-semibold">
+                    <div className="text-slate-450 font-black uppercase tracking-wide border-b border-slate-100 pb-1 text-[9px]">Comparison Matrix</div>
+                    <div className="grid grid-cols-2 gap-3 text-slate-600">
+                      <div className="border-r border-slate-100 pr-2">
+                        <span className="text-slate-400 block font-bold text-[9px] mb-1">CURRENT STATUS:</span>
+                        <ul className="list-disc pl-3.5 space-y-1 font-bold">
+                          {selectedStudent.name !== selectedStudent.pendingEdits.name && <li>Name: <span className="line-through text-rose-500">{selectedStudent.name}</span></li>}
+                          {selectedStudent.gender !== selectedStudent.pendingEdits.gender && <li>Gender: <span className="line-through text-rose-500">{selectedStudent.gender}</span></li>}
+                          {selectedStudent.gradeLevel !== selectedStudent.pendingEdits.gradeLevel && <li>Grade: <span className="line-through text-rose-500">{selectedStudent.gradeLevel}</span></li>}
+                          {selectedStudent.boardingStatus !== selectedStudent.pendingEdits.boardingStatus && <li>Boarding: <span className="line-through text-rose-500">{selectedStudent.boardingStatus}</span></li>}
+                          {selectedStudent.parentEmail !== selectedStudent.pendingEdits.parentEmail && <li>Email: <span className="line-through text-rose-500">{selectedStudent.parentEmail || '(None)'}</span></li>}
+                          {selectedStudent.parentPhone !== selectedStudent.pendingEdits.parentPhone && <li>Phone: <span className="line-through text-rose-500">{selectedStudent.parentPhone || '(None)'}</span></li>}
+                        </ul>
+                      </div>
+                      <div>
+                        <span className="text-indigo-600 block font-bold text-[9px] mb-1 font-black">PROPOSED EDITS:</span>
+                        <ul className="list-disc pl-3.5 space-y-1 font-black text-slate-800">
+                          {selectedStudent.name !== selectedStudent.pendingEdits.name && <li>Name: <span className="text-emerald-600 font-extrabold">{selectedStudent.pendingEdits.name}</span></li>}
+                          {selectedStudent.gender !== selectedStudent.pendingEdits.gender && <li>Gender: <span className="text-emerald-600 font-extrabold">{selectedStudent.pendingEdits.gender}</span></li>}
+                          {selectedStudent.gradeLevel !== selectedStudent.pendingEdits.gradeLevel && <li>Grade: <span className="text-emerald-600 font-extrabold">{selectedStudent.pendingEdits.gradeLevel}</span></li>}
+                          {selectedStudent.boardingStatus !== selectedStudent.pendingEdits.boardingStatus && <li>Boarding: <span className="text-emerald-600 font-extrabold">{selectedStudent.pendingEdits.boardingStatus}</span></li>}
+                          {selectedStudent.parentEmail !== selectedStudent.pendingEdits.parentEmail && <li>Email: <span className="text-emerald-600 font-extrabold">{selectedStudent.pendingEdits.parentEmail || '(None)'}</span></li>}
+                          {selectedStudent.parentPhone !== selectedStudent.pendingEdits.parentPhone && <li>Phone: <span className="text-emerald-600 font-extrabold">{selectedStudent.pendingEdits.parentPhone || '(None)'}</span></li>}
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {userRole === 'super_admin' ? (
+                  <div className="flex gap-2 pt-1">
+                    <button
+                      onClick={async () => {
+                        await handleApproveStudentChange(selectedStudent.id);
+                      }}
+                      className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-750 text-white font-extrabold text-[10px] uppercase tracking-wider rounded-xl transition-all shadow-3xs cursor-pointer flex items-center justify-center gap-1"
+                    >
+                      <Check className="w-3.5 h-3.5" /> Approve Code
+                    </button>
+                    <button
+                      onClick={async () => {
+                        await handleRejectStudentChange(selectedStudent.id);
+                        setSelectedStudentId(null);
+                      }}
+                      className="flex-1 py-2 bg-rose-50 border border-rose-200 hover:bg-rose-100 text-rose-700 font-extrabold text-[10px] uppercase tracking-wider rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1"
+                    >
+                      <X className="w-3.5 h-3.5" /> Decline Request
+                    </button>
+                  </div>
+                ) : (
+                  <div className="text-[9.5px] text-amber-700 font-bold bg-amber-50 border border-amber-100/50 p-2 rounded-lg text-center flex items-center justify-center gap-1.5 leading-normal">
+                    <ShieldAlert className="w-3.5 h-3.5 animate-pulse shrink-0" />
+                    Pending Academic Administrator authorization action.
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Quick school info */}
             <div className="grid grid-cols-2 gap-3 text-xs text-slate-650 leading-relaxed font-semibold bg-slate-50/50 p-3 rounded-xl border border-slate-150">
@@ -696,6 +826,159 @@ export default function StudentsTab({
           </div>
         )}
       </div>
+
+      {/* Student Profile Editing Modal */}
+      {showEditModal && selectedStudent && (
+        <div id="modal-edit-student" className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white border border-slate-200 rounded-3xl max-w-lg w-full overflow-hidden shadow-2xl flex flex-col">
+            <div className="p-5 border-b border-slate-100 flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-black text-slate-900">Propose student updates</h3>
+                <p className="text-[10px] text-slate-400 font-semibold mt-0.5">Editing: {selectedStudent.name} ({selectedStudent.admissionNo})</p>
+              </div>
+              <button onClick={() => setShowEditModal(false)} className="text-slate-400 hover:text-slate-650">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form 
+              onSubmit={async (e) => {
+                e.preventDefault();
+                await handleProposeStudentEdit(selectedStudent.id, {
+                  name: editForm.name,
+                  gender: editForm.gender,
+                  gradeLevel: editForm.gradeLevel,
+                  boardingStatus: editForm.boardingStatus,
+                  dormitoryId: editForm.boardingStatus === 'Boarder' ? editForm.dormitoryId : undefined,
+                  busRouteId: editForm.boardingStatus === 'Day' ? editForm.busRouteId : undefined,
+                  parentEmail: editForm.parentEmail,
+                  parentPhone: editForm.parentPhone
+                });
+                setShowEditModal(false);
+              }} 
+              className="p-5 space-y-4 text-xs font-semibold text-left"
+            >
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="sm:col-span-2">
+                  <label className="text-[10px] uppercase font-black text-slate-450 mb-1 block">Full Name *</label>
+                  <input 
+                    type="text"
+                    required
+                    placeholder="e.g. Jabari Omwamba"
+                    value={editForm.name}
+                    onChange={e => setEditForm({ ...editForm, name: e.target.value })}
+                    className="w-full p-2.5 bg-[#f8fafc] border border-slate-200 rounded-xl focus:border-indigo-500 font-bold"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[10px] uppercase font-black text-slate-450 mb-1 block">Gender *</label>
+                  <select
+                    value={editForm.gender}
+                    onChange={e => setEditForm({ ...editForm, gender: e.target.value as any })}
+                    className="w-full p-2.5 bg-[#f8fafc] border border-slate-200 rounded-xl font-bold"
+                  >
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-[10px] uppercase font-black text-slate-450 mb-1 block">Grade / Year level Designation *</label>
+                  <select
+                    value={editForm.gradeLevel}
+                    onChange={e => setEditForm({ ...editForm, gradeLevel: e.target.value })}
+                    className="w-full p-2.5 bg-[#f8fafc] border border-slate-200 rounded-xl font-bold"
+                  >
+                    <option value="Grade 4">Grade 4 (Formative Elementary)</option>
+                    <option value="Grade 5">Grade 5 (Formative Elementary)</option>
+                    <option value="Grade 6">Grade 6 (Formative Elementary)</option>
+                    <option value="Year 7">Year 7 Middle School</option>
+                    <option value="Year 8">Year 8 Middle School</option>
+                    <option value="Year 9">Year 9 Middle School</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-[10px] uppercase font-black text-slate-455 mb-1 block">Boarding Category *</label>
+                  <select
+                    value={editForm.boardingStatus}
+                    onChange={e => setEditForm({ ...editForm, boardingStatus: e.target.value as any })}
+                    className="w-full p-2.5 bg-[#f8fafc] border border-slate-200 rounded-xl font-bold"
+                  >
+                    <option value="Day">Day Commuter Scholar</option>
+                    <option value="Boarder">Full Boarding Resident</option>
+                  </select>
+                </div>
+
+                {editForm.boardingStatus === 'Boarder' ? (
+                  <div>
+                    <label className="text-[10px] uppercase font-black text-slate-450 mb-1 block">Dormitory allocation</label>
+                    <select
+                      value={editForm.dormitoryId}
+                      onChange={e => setEditForm({ ...editForm, dormitoryId: e.target.value })}
+                      className="w-full p-2.5 bg-[#f8fafc] border border-slate-200 rounded-xl font-bold"
+                    >
+                      <option value="dorm-elgon">Elgon House (Boys)</option>
+                      <option value="dorm-kili">Kilimanjaro House (Girls)</option>
+                    </select>
+                  </div>
+                ) : (
+                  <div>
+                    <label className="text-[10px] uppercase font-black text-slate-450 mb-1 block">Transport assignment</label>
+                    <select
+                      value={editForm.busRouteId}
+                      onChange={e => setEditForm({ ...editForm, busRouteId: e.target.value })}
+                      className="w-full p-2.5 bg-[#f8fafc] border border-slate-200 rounded-xl font-bold"
+                    >
+                      <option value="route-a">Westlands / Kilimani Shuttle</option>
+                      <option value="route-b">Karen / Langata Express</option>
+                    </select>
+                  </div>
+                )}
+
+                <div>
+                  <label className="text-[10px] uppercase font-black text-slate-450 mb-1 block">Guardian Email</label>
+                  <input 
+                    type="email"
+                    placeholder="parent@example.com"
+                    value={editForm.parentEmail}
+                    onChange={e => setEditForm({ ...editForm, parentEmail: e.target.value })}
+                    className="w-full p-2.5 bg-[#f8fafc] border border-slate-200 rounded-xl font-bold"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[10px] uppercase font-black text-slate-450 mb-1 block">Guardian Mobile phone</label>
+                  <input 
+                    type="text"
+                    placeholder="e.g. 0712345678"
+                    value={editForm.parentPhone}
+                    onChange={e => setEditForm({ ...editForm, parentPhone: e.target.value })}
+                    className="w-full p-2.5 bg-[#f8fafc] border border-slate-200 rounded-xl font-bold"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2.5 pt-4 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setShowEditModal(false)}
+                  className="px-4.5 py-2.5 text-slate-500 hover:bg-slate-100 rounded-xl text-xs font-bold cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-black shadow-sm cursor-pointer"
+                >
+                  {userRole === 'teacher' ? 'Submit Proposal to Admin' : 'Save Changes'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
     </div>
   );
