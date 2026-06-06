@@ -17,7 +17,9 @@ import {
   School, 
   Staff, 
   SchoolClass, 
-  FeeRecord 
+  FeeRecord,
+  ExamSchedule,
+  PortalNotification
 } from './src/types';
 import { loadDatabase, saveDatabase, getDb, pool } from './server/db';
 import { generatePersonalizedRemark } from './server/geminiService';
@@ -129,7 +131,9 @@ registerGet('/api/state', (req, res) => {
     staff: db.staff,
     schoolClasses: db.schoolClasses,
     feeRecords: db.feeRecords,
-    examReports: db.examReports || []
+    examReports: db.examReports || [],
+    examSchedules: db.examSchedules || [],
+    portalNotifications: db.portalNotifications || []
   });
 });
 
@@ -431,6 +435,102 @@ registerPost('/api/sync', async (req, res) => {
             });
           }
           syncResults.push({ id: action.id, status: 'success', message: `Fee payment logged.` });
+          break;
+        }
+
+        case 'create_exam_schedule': {
+          const newSchedule: ExamSchedule = {
+            id: payload.id || `sched-${(db.examSchedules?.length || 0) + 101}`,
+            schoolId: payload.schoolId,
+            gradeLevel: payload.gradeLevel,
+            subject: payload.subject,
+            examDate: payload.examDate,
+            examTime: payload.examTime,
+            durationMinutes: Number(payload.durationMinutes) || 60,
+            venue: payload.venue || 'TBD',
+            instructions: payload.instructions || '',
+            createdAt: payload.createdAt || new Date().toISOString()
+          };
+
+          if (!db.examSchedules) {
+            db.examSchedules = [];
+          }
+          db.examSchedules.push(newSchedule);
+
+          // Find students in this school that are in gradeLevel
+          const schoolStudents = db.students.filter(
+            s => s.schoolId === payload.schoolId && (payload.gradeLevel === 'all' || s.gradeLevel === payload.gradeLevel)
+          );
+
+          if (!db.portalNotifications) {
+            db.portalNotifications = [];
+          }
+
+          // Trigger notifications to all matching students & parents in portal
+          for (const student of schoolStudents) {
+            // For student
+            const studentNotif: PortalNotification = {
+              id: `notif-${db.portalNotifications.length + 1001}-${student.id}-student`,
+              schoolId: payload.schoolId,
+              studentId: student.id,
+              roleTag: 'student',
+              title: `📅 Exam Scheduled: ${payload.subject}`,
+              message: `Your ${payload.gradeLevel} exam for ${payload.subject} has been scheduled on ${payload.examDate} at ${payload.examTime} (${payload.venue}). Instructions: ${payload.instructions || 'Bring required writing materials.'}`,
+              category: 'exam',
+              createdAt: new Date().toISOString(),
+              readBy: []
+            };
+            db.portalNotifications.push(studentNotif);
+
+            // For parent
+            const parentNotif: PortalNotification = {
+              id: `notif-${db.portalNotifications.length + 1001}-${student.id}-parent`,
+              schoolId: payload.schoolId,
+              studentId: student.id,
+              roleTag: 'parent',
+              title: `📅 Exam Scheduled for ${student.name}`,
+              message: `Dear Parent, ${student.name}'s exam for ${payload.subject} has been scheduled on ${payload.examDate} at ${payload.examTime} inside ${payload.venue}. Instructions: ${payload.instructions || 'Prepare standard equipment.'}`,
+              category: 'exam',
+              createdAt: new Date().toISOString(),
+              readBy: []
+            };
+            db.portalNotifications.push(parentNotif);
+          }
+
+          // Global notification fallback
+          const generalNotif: PortalNotification = {
+            id: `notif-${db.portalNotifications.length + 101}`,
+            schoolId: payload.schoolId,
+            roleTag: 'all',
+            title: `📅 New Exam Schedule set for ${payload.gradeLevel}`,
+            message: `${payload.gradeLevel} ${payload.subject} exam is set for ${payload.examDate} at ${payload.examTime} (${payload.venue}).`,
+            category: 'exam',
+            createdAt: new Date().toISOString(),
+            readBy: []
+          };
+          db.portalNotifications.push(generalNotif);
+
+          syncResults.push({ id: action.id, status: 'success', message: `Exam schedule created and ${schoolStudents.length * 2 + 1} notifications triggered successfully.` });
+          break;
+        }
+
+        case 'mark_notification_read': {
+          const { id, userEmail } = payload;
+          if (!db.portalNotifications) {
+            db.portalNotifications = [];
+          }
+          const idx = db.portalNotifications.findIndex(n => n.id === id);
+          if (idx !== -1) {
+            if (!db.portalNotifications[idx].readBy) {
+              db.portalNotifications[idx].readBy = [];
+            }
+            if (!db.portalNotifications[idx].readBy.includes(userEmail)) {
+              db.portalNotifications[idx].readBy.push(userEmail);
+            }
+            syncResults.push({ id: action.id, status: 'success', message: `Notification ${id} marked as read by ${userEmail}.` });
+          } else {
+            syncResults.push({ id: action.id, status: 'failed', error: `Notification ID ${id} not found.` });
+          }
           break;
         }
 

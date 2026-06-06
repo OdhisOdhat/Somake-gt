@@ -14,7 +14,8 @@ import {
   LogOut,
   Lock,
   Sun,
-  Moon
+  Moon,
+  Bell
 } from 'lucide-react';
 import { School } from '../types';
 import { useAppContext } from '../context/AppContext';
@@ -23,7 +24,7 @@ interface SkoolaSidebarProps {
   schools: School[];
   activeSchoolId: string;
   setActiveSchoolId: (id: string) => void;
-  activeTab: 'dashboard' | 'schools' | 'students' | 'staff' | 'classes' | 'attendance' | 'fees';
+  activeTab: 'dashboard' | 'schools' | 'students' | 'staff' | 'classes' | 'attendance' | 'fees' | 'exams';
   setActiveTab: (tab: any) => void;
   onNewSchoolClick: () => void;
   userEmail: string;
@@ -57,7 +58,8 @@ export default function SkoolaSidebar({
     { id: 'staff', label: 'Staff', icon: UserCheck },
     { id: 'classes', label: 'Classes', icon: BookOpen },
     { id: 'attendance', label: 'Attendance', icon: Calendar },
-    { id: 'fees', label: 'Fees', icon: Coins }
+    { id: 'fees', label: 'Fees', icon: Coins },
+    { id: 'exams', label: 'Exams & Alerts', icon: Bell }
   ] as const;
 
   const isTabLocked = (tabId: string) => {

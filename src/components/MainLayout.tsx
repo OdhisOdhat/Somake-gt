@@ -23,6 +23,7 @@ import StaffTab from './StaffTab';
 import ClassesTab from './ClassesTab';
 import AttendanceTab from './AttendanceTab';
 import FeesTab from './FeesTab';
+import ExamsTab from './ExamsTab';
 
 export default function MainLayout() {
   const {
@@ -694,6 +695,10 @@ export default function MainLayout() {
                 setShowPaymentModal(true);
               }}
             />
+          )}
+
+          {activeTab === 'exams' && (
+            <ExamsTab />
           )}
         </div>
 

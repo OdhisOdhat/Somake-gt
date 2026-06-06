@@ -13,7 +13,9 @@ import {
   Staff, 
   SchoolClass, 
   FeeRecord,
-  ExamReport
+  ExamReport,
+  ExamSchedule,
+  PortalNotification
 } from '../src/types';
 
 dotenv.config();
@@ -49,6 +51,8 @@ export interface DatabaseState {
   dormitories: Dormitory[];
   busRoutes: BusRoute[];
   examReports?: ExamReport[];
+  examSchedules?: ExamSchedule[];
+  portalNotifications?: PortalNotification[];
 }
 
 const initialData: DatabaseState = {
@@ -198,6 +202,56 @@ const initialData: DatabaseState = {
       published: true,
       updatedAt: '2026-06-03'
     }
+  ],
+  examSchedules: [
+    {
+      id: 'sched-1',
+      schoolId: 'school-2',
+      gradeLevel: 'Year 8',
+      subject: 'Science',
+      examDate: '2026-06-18',
+      examTime: '09:00 AM',
+      durationMinutes: 90,
+      venue: 'Main Lab 1',
+      instructions: 'Please bring your periodic table chart and scientific calculator.',
+      createdAt: '2026-06-05T08:00:00Z'
+    },
+    {
+      id: 'sched-2',
+      schoolId: 'school-1',
+      gradeLevel: 'Grade 4',
+      subject: 'Mathematics',
+      examDate: '2026-06-22',
+      examTime: '10:30 AM',
+      durationMinutes: 60,
+      venue: 'Classroom 4A',
+      instructions: 'Ensure drawing instruments are packed and sharp pencils are ready.',
+      createdAt: '2026-06-06T10:00:00Z'
+    }
+  ],
+  portalNotifications: [
+    {
+      id: 'notif-1',
+      schoolId: 'school-2',
+      studentId: '4',
+      roleTag: 'all',
+      title: 'Year 8 Science Mid-Term Exam Date',
+      message: 'Attention Parent and Student: The Chemistry and Physics combined exam is scheduled on Thursday, June 18 at 09:00 AM at the Main Lab 1.',
+      category: 'exam',
+      createdAt: '2026-06-05T08:05:00Z',
+      readBy: []
+    },
+    {
+      id: 'notif-2',
+      schoolId: 'school-1',
+      studentId: '1',
+      roleTag: 'all',
+      title: 'Grade 4 Mathematics Examination Scheduled',
+      message: 'Attention: Grade 4 Math final assessment has been set for June 22 at 10:30 AM in Classroom 4A. Make sure you bring simple rulers.',
+      category: 'exam',
+      createdAt: '2026-06-06T10:02:00Z',
+      readBy: []
+    }
   ]
 };
 
@@ -206,11 +260,13 @@ let dbState: DatabaseState = { ...initialData };
 async function initTables() {
   const client = await pool.connect();
   try {
-    const tableCheck = await client.query("SELECT to_regclass('public.app_users') as app_users, to_regclass('public.exam_reports') as exam_reports");
+    const tableCheck = await client.query("SELECT to_regclass('public.app_users') as app_users, to_regclass('public.exam_reports') as exam_reports, to_regclass('public.exam_schedules') as exam_schedules, to_regclass('public.portal_notifications') as portal_notifications");
     const hasAppUsers = tableCheck.rows[0] && tableCheck.rows[0].app_users;
     const hasExamReports = tableCheck.rows[0] && tableCheck.rows[0].exam_reports;
+    const hasExamSchedules = tableCheck.rows[0] && tableCheck.rows[0].exam_schedules;
+    const hasPortalNotifications = tableCheck.rows[0] && tableCheck.rows[0].portal_notifications;
 
-    if (hasAppUsers && hasExamReports) {
+    if (hasAppUsers && hasExamReports && hasExamSchedules && hasPortalNotifications) {
       // Tables already exist; bypass CREATE TABLE queries for instant serverless cold-starts
       return;
     }
@@ -401,6 +457,35 @@ async function initTables() {
         password TEXT NOT NULL,
         role TEXT NOT NULL,
         school_id TEXT DEFAULT ''
+      );
+    `);
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS exam_schedules (
+        id TEXT PRIMARY KEY,
+        school_id TEXT NOT NULL,
+        grade_level TEXT NOT NULL,
+        subject TEXT NOT NULL,
+        exam_date TEXT NOT NULL,
+        exam_time TEXT NOT NULL,
+        duration_minutes INTEGER,
+        venue TEXT,
+        instructions TEXT DEFAULT '',
+        created_at TEXT NOT NULL
+      );
+    `);
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS portal_notifications (
+        id TEXT PRIMARY KEY,
+        school_id TEXT NOT NULL,
+        student_id TEXT,
+        role_tag TEXT NOT NULL,
+        title TEXT NOT NULL,
+        message TEXT NOT NULL,
+        category TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        read_by JSONB NOT NULL DEFAULT '[]'::jsonb
       );
     `);
 
@@ -732,6 +817,44 @@ export async function loadDatabase(): Promise<DatabaseState> {
       console.log('[Somake Neon DB] Postgres table exam_reports query failed, using in-memory pre-seeds on the client');
       dbState.examReports = initialData.examReports || [];
     }
+
+    try {
+      const examSchedules = await pool.query('SELECT * FROM exam_schedules');
+      dbState.examSchedules = examSchedules.rows.map(r => ({
+        id: r.id,
+        schoolId: r.school_id,
+        gradeLevel: r.grade_level,
+        subject: r.subject,
+        examDate: r.exam_date,
+        examTime: r.exam_time,
+        durationMinutes: r.duration_minutes || 60,
+        venue: r.venue || '',
+        instructions: r.instructions || '',
+        createdAt: r.created_at || new Date().toISOString()
+      }));
+    } catch (e) {
+      console.log('[Somake Neon DB] Postgres table exam_schedules query failed, using in-memory pre-seeds');
+      dbState.examSchedules = dbState.examSchedules || initialData.examSchedules || [];
+    }
+
+    try {
+      const portalNotifications = await pool.query('SELECT * FROM portal_notifications');
+      dbState.portalNotifications = portalNotifications.rows.map(r => ({
+        id: r.id,
+        schoolId: r.school_id,
+        studentId: r.student_id || undefined,
+        roleTag: r.role_tag,
+        title: r.title,
+        message: r.message,
+        category: r.category,
+        createdAt: r.created_at || new Date().toISOString(),
+        readBy: Array.isArray(r.read_by) ? r.read_by : []
+      }));
+    } catch (e) {
+      console.log('[Somake Neon DB] Postgres table portal_notifications query failed, using in-memory pre-seeds');
+      dbState.portalNotifications = dbState.portalNotifications || initialData.portalNotifications || [];
+    }
+
     console.log('[Somake Neon DB] Successfully loaded database state from PostgreSQL (concurrently).');
   } catch (err) {
     console.error('[Somake Neon DB] Failed to load data from database:', err);
@@ -749,7 +872,7 @@ export async function saveDatabase(): Promise<void> {
     await client.query('BEGIN');
 
     // Truncate tables with CASCADE
-    await client.query('TRUNCATE schools, staff, school_classes, students, fee_records, assessments, grades, attendance, lms_materials, lms_submissions, dormitories, bus_routes, exam_reports CASCADE');
+    await client.query('TRUNCATE schools, staff, school_classes, students, fee_records, assessments, grades, attendance, lms_materials, lms_submissions, dormitories, bus_routes, exam_reports, exam_schedules, portal_notifications CASCADE');
 
     // Refill schools
     for (const item of dbState.schools) {
@@ -858,6 +981,26 @@ export async function saveDatabase(): Promise<void> {
             item.published === undefined ? true : item.published, 
             item.updatedAt || ''
           ]
+        );
+      }
+    }
+
+    // Refill examSchedules
+    if (dbState.examSchedules) {
+      for (const item of dbState.examSchedules) {
+        await client.query(
+          'INSERT INTO exam_schedules (id, school_id, grade_level, subject, exam_date, exam_time, duration_minutes, venue, instructions, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)',
+          [item.id, item.schoolId, item.gradeLevel, item.subject, item.examDate, item.examTime, item.durationMinutes, item.venue || '', item.instructions || '', item.createdAt]
+        );
+      }
+    }
+
+    // Refill portalNotifications
+    if (dbState.portalNotifications) {
+      for (const item of dbState.portalNotifications) {
+        await client.query(
+          'INSERT INTO portal_notifications (id, school_id, student_id, role_tag, title, message, category, created_at, read_by) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)',
+          [item.id, item.schoolId, item.studentId || null, item.roleTag, item.title, item.message, item.category, item.createdAt, JSON.stringify(item.readBy || [])]
         );
       }
     }

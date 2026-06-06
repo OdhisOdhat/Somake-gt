@@ -111,7 +111,7 @@ export interface BusRoute {
 
 export interface OfflineAction {
   id: string;
-  actionType: 'create_student' | 'edit_student' | 'approve_student' | 'reject_student' | 'grade_student' | 'mark_attendance' | 'submit_lms' | 'add_material' | 'parent_approve' | 'create_school' | 'create_staff' | 'create_class' | 'record_payment' | 'link_staff' | 'submit_exam_report' | 'update_school';
+  actionType: 'create_student' | 'edit_student' | 'approve_student' | 'reject_student' | 'grade_student' | 'mark_attendance' | 'submit_lms' | 'add_material' | 'parent_approve' | 'create_school' | 'create_staff' | 'create_class' | 'record_payment' | 'link_staff' | 'submit_exam_report' | 'update_school' | 'create_exam_schedule' | 'mark_notification_read';
   payload: any;
   timestamp: string;
 }
@@ -184,4 +184,29 @@ export interface FeeRecord {
   paidAmount: number;
   status: 'Pending' | 'Partial' | 'Paid';
   history: FeePaymentHistory[];
+}
+
+export interface ExamSchedule {
+  id: string;
+  schoolId: string;
+  gradeLevel: string;
+  subject: string;
+  examDate: string;
+  examTime: string;
+  durationMinutes: number;
+  venue: string;
+  instructions: string;
+  createdAt: string;
+}
+
+export interface PortalNotification {
+  id: string;
+  schoolId: string;
+  studentId?: string;
+  roleTag: 'student' | 'parent' | 'all';
+  title: string;
+  message: string;
+  category: 'exam' | 'info' | 'general';
+  createdAt: string;
+  readBy?: string[];
 }

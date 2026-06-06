@@ -14,7 +14,9 @@ import {
   Staff, 
   SchoolClass, 
   FeeRecord,
-  ExamReport
+  ExamReport,
+  ExamSchedule,
+  PortalNotification
 } from '../types';
 
 interface AppContextType {
@@ -70,8 +72,13 @@ interface AppContextType {
   // Active Context Indicators
   activeSchoolId: string;
   setActiveSchoolId: (id: string) => void;
-  activeTab: 'dashboard' | 'schools' | 'students' | 'staff' | 'classes' | 'attendance' | 'fees';
+  activeTab: 'dashboard' | 'schools' | 'students' | 'staff' | 'classes' | 'attendance' | 'fees' | 'exams';
   setActiveTab: (tab: any) => void;
+
+  examSchedules: ExamSchedule[];
+  portalNotifications: PortalNotification[];
+  handleCreateExamSchedule: (schedulePayload: Omit<ExamSchedule, 'id' | 'createdAt'>) => Promise<void>;
+  handleMarkNotificationRead: (notificationId: string) => Promise<void>;
 
   // Interaction Modals Visible status triggers
   showSchoolModal: boolean;
@@ -139,6 +146,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [schoolClasses, setSchoolClasses] = useState<SchoolClass[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
   const [feeRecords, setFeeRecords] = useState<FeeRecord[]>([]);
+  const [examSchedules, setExamSchedules] = useState<ExamSchedule[]>([]);
+  const [portalNotifications, setPortalNotifications] = useState<PortalNotification[]>([]);
 
   // Original datasets
   const [assessments, setAssessments] = useState<Assessment[]>([]);
@@ -246,7 +255,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // School selectors & navigation trackers
   const [activeSchoolId, setActiveSchoolId] = useState<string>('');
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'schools' | 'students' | 'staff' | 'classes' | 'attendance' | 'fees'>('dashboard');
+  const [activeTab, setActiveTab ] = useState<'dashboard' | 'schools' | 'students' | 'staff' | 'classes' | 'attendance' | 'fees' | 'exams'>('dashboard');
 
   // Dialog triggers
   const [showSchoolModal, setShowSchoolModal] = useState<boolean>(false);
@@ -318,6 +327,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setStaff(data.staff || []);
       setSchoolClasses(data.schoolClasses || []);
       setFeeRecords(data.feeRecords || []);
+      setExamSchedules(data.examSchedules || []);
+      setPortalNotifications(data.portalNotifications || []);
       if (data.examReports) {
         setExamReports(data.examReports);
       }
@@ -964,6 +975,84 @@ export function AppProvider({ children }: { children: ReactNode }) {
     showToast('School profile customized and synchronized successfully!', 'success');
   };
 
+  const handleCreateExamSchedule = async (schedulePayload: Omit<ExamSchedule, 'id' | 'createdAt'>) => {
+    const id = `sched-${(examSchedules?.length || 0) + 101}`;
+    const fullSchedule: ExamSchedule = {
+      ...schedulePayload,
+      id,
+      createdAt: new Date().toISOString()
+    };
+
+    setExamSchedules(prev => [...(prev || []), fullSchedule]);
+
+    const schoolStudents = students.filter(
+      s => s.schoolId === schedulePayload.schoolId && (schedulePayload.gradeLevel === 'all' || s.gradeLevel === schedulePayload.gradeLevel)
+    );
+
+    const newNotifs: PortalNotification[] = [];
+    for (const student of schoolStudents) {
+      newNotifs.push({
+        id: `notif-local-${Math.floor(Math.random() * 1000000)}-${student.id}-student`,
+        schoolId: schedulePayload.schoolId,
+        studentId: student.id,
+        roleTag: 'student',
+        title: `📅 Exam Scheduled: ${schedulePayload.subject}`,
+        message: `Your ${schedulePayload.gradeLevel} exam for ${schedulePayload.subject} has been scheduled on ${schedulePayload.examDate} at ${schedulePayload.examTime} (${schedulePayload.venue || 'TBD'}). Instructions: ${schedulePayload.instructions || 'Bring required writing materials.'}`,
+        category: 'exam',
+        createdAt: new Date().toISOString(),
+        readBy: []
+      });
+
+      newNotifs.push({
+        id: `notif-local-${Math.floor(Math.random() * 1000000)}-${student.id}-parent`,
+        schoolId: schedulePayload.schoolId,
+        studentId: student.id,
+        roleTag: 'parent',
+        title: `📅 Exam Scheduled for ${student.name}`,
+        message: `Dear Parent, ${student.name}'s exam for ${schedulePayload.subject} has been scheduled on ${schedulePayload.examDate} at ${schedulePayload.examTime} inside ${schedulePayload.venue || 'TBD'}. Instructions: ${schedulePayload.instructions || 'Prepare standard equipment.'}`,
+        category: 'exam',
+        createdAt: new Date().toISOString(),
+        readBy: []
+      });
+    }
+
+    newNotifs.push({
+      id: `notif-local-${Math.floor(Math.random() * 1000000)}-global`,
+      schoolId: schedulePayload.schoolId,
+      roleTag: 'all',
+      title: `📅 New Exam Schedule set for ${schedulePayload.gradeLevel}`,
+      message: `${schedulePayload.gradeLevel} ${schedulePayload.subject} exam is set for ${schedulePayload.examDate} at ${schedulePayload.examTime} (${schedulePayload.venue || 'TBD'}).`,
+      category: 'exam',
+      createdAt: new Date().toISOString(),
+      readBy: []
+    });
+
+    setPortalNotifications(prev => [...(prev || []), ...newNotifs]);
+
+    try {
+      await dispatchActionToServer('create_exam_schedule', fullSchedule);
+      await fetchStateFromServer();
+      showToast(`Exam successfully scheduled and ${schoolStudents.length * 2 + 1} notifications dispatched!`, 'success');
+    } catch {
+      showToast('Failed to schedule exam on host database.', 'error');
+    }
+  };
+
+  const handleMarkNotificationRead = async (notificationId: string) => {
+    setPortalNotifications(prev => 
+      (prev || []).map(n => n.id === notificationId 
+        ? { ...n, readBy: [...(n.readBy || []), userEmail] } 
+        : n
+      )
+    );
+
+    try {
+      await dispatchActionToServer('mark_notification_read', { id: notificationId, userEmail });
+    } catch {
+      console.warn('Failed to sync notification read state on server');
+    }
+  };
+
   // Archive & Delete operations with DB syncing
   const handleDeleteStudent = async (id: string) => {
     setStudents(prev => prev.filter(s => s.id !== id));
@@ -1036,6 +1125,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       schoolClasses, setSchoolClasses,
       students, setStudents,
       feeRecords, setFeeRecords,
+      examSchedules,
+      portalNotifications,
       assessments, setAssessments,
       grades, setGrades,
       attendance, setAttendance,
@@ -1089,6 +1180,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       handleDeleteSchool,
       handleGenerateAiComment,
       handleUpdateSchoolProfile,
+      handleCreateExamSchedule,
+      handleMarkNotificationRead,
       examReports,
       setExamReports,
       handleSaveExamReport,
