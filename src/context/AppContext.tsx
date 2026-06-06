@@ -13,7 +13,8 @@ import {
   School, 
   Staff, 
   SchoolClass, 
-  FeeRecord 
+  FeeRecord,
+  ExamReport
 } from '../types';
 
 interface AppContextType {
@@ -34,6 +35,9 @@ interface AppContextType {
   setAssessments: React.Dispatch<React.SetStateAction<Assessment[]>>;
   grades: StudentGrade[];
   setGrades: React.Dispatch<React.SetStateAction<StudentGrade[]>>;
+  examReports: ExamReport[];
+  setExamReports: React.Dispatch<React.SetStateAction<ExamReport[]>>;
+  handleSaveExamReport: (report: ExamReport) => void;
   attendance: AttendanceRecord[];
   setAttendance: React.Dispatch<React.SetStateAction<AttendanceRecord[]>>;
   lmsMaterials: LMSMaterial[];
@@ -138,6 +142,59 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // Original datasets
   const [assessments, setAssessments] = useState<Assessment[]>([]);
   const [grades, setGrades] = useState<StudentGrade[]>([]);
+  const [examReports, setExamReports] = useState<ExamReport[]>(() => {
+    try {
+      const saved = localStorage.getItem('skoola-exam-reports');
+      if (saved) return JSON.parse(saved);
+    } catch (e) {
+      console.error(e);
+    }
+    return [
+      {
+        id: 'rep-1',
+        studentId: '1',
+        schoolId: 'school-1',
+        term: 'Term 2',
+        year: '2026',
+        attendancePresent: 82,
+        attendanceTotal: 85,
+        conduct: 'Excellent',
+        extraCurricular: 'Active in School Soccer as a forward striker and participates regularly in drama performances.',
+        teacherRemarks: 'Musa has behaved wonderfully this term and showed exceptional leadership skills in school cleanups and peer support.',
+        principalRemarks: 'Superb dedication. We are incredibly proud of Musas performance and conduct inside Nairobi Primary School.',
+        teacherSignature: 'P. Wambui',
+        principalSignature: 'J. Mwangi',
+        published: true,
+        updatedAt: '2026-06-01'
+      },
+      {
+        id: 'rep-2',
+        studentId: '4',
+        schoolId: 'school-2',
+        term: 'Term 2',
+        year: '2026',
+        attendancePresent: 88,
+        attendanceTotal: 90,
+        conduct: 'Very Good',
+        extraCurricular: 'A key participant in debate contests and school band rehearsals.',
+        teacherRemarks: 'Chloe has continued to shine in creative reading and critical analytical discussions.',
+        principalRemarks: 'An outstanding high achiever. Keep up the high effort levels!',
+        teacherSignature: 'C. Carter',
+        principalSignature: 'A. Pendelton',
+        published: true,
+        updatedAt: '2026-06-03'
+      }
+    ];
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('skoola-exam-reports', JSON.stringify(examReports));
+    } catch (e) {
+      console.error(e);
+    }
+  }, [examReports]);
+
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
   const [lmsMaterials, setLmsMaterials] = useState<LMSMaterial[]>([]);
   const [lmsSubmissions, setLmsSubmissions] = useState<LMSSubmission[]>([]);
@@ -260,6 +317,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setStaff(data.staff || []);
       setSchoolClasses(data.schoolClasses || []);
       setFeeRecords(data.feeRecords || []);
+      if (data.examReports) {
+        setExamReports(data.examReports);
+      }
 
       // Auto-configure linked teacher or student context indicators
       const savedUser = localStorage.getItem('skoola-user');
@@ -878,6 +938,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setShowPaymentModal(false);
   };
 
+  const handleSaveExamReport = (report: ExamReport) => {
+    setExamReports(prev => {
+      const idx = prev.findIndex(r => r.studentId === report.studentId && r.term === report.term && r.year === report.year);
+      if (idx !== -1) {
+        const next = [...prev];
+        next[idx] = report;
+        return next;
+      }
+      return [...prev, report];
+    });
+    dispatchActionToServer('submit_exam_report', report);
+    showToast(`Exam report for ${report.term} ${report.year} is updated!`, 'success');
+  };
+
   // Archive & Delete operations with DB syncing
   const handleDeleteStudent = async (id: string) => {
     setStudents(prev => prev.filter(s => s.id !== id));
@@ -1002,6 +1076,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       handleDeleteStaff,
       handleDeleteSchool,
       handleGenerateAiComment,
+      examReports,
+      setExamReports,
+      handleSaveExamReport,
       darkMode,
       toggleDarkMode
     }}>

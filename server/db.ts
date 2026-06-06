@@ -12,7 +12,8 @@ import {
   School, 
   Staff, 
   SchoolClass, 
-  FeeRecord 
+  FeeRecord,
+  ExamReport
 } from '../src/types';
 
 dotenv.config();
@@ -47,6 +48,7 @@ export interface DatabaseState {
   lmsSubmissions: LMSSubmission[];
   dormitories: Dormitory[];
   busRoutes: BusRoute[];
+  examReports?: ExamReport[];
 }
 
 const initialData: DatabaseState = {
@@ -160,6 +162,42 @@ const initialData: DatabaseState = {
   busRoutes: [
     { id: 'route-a', name: 'Westlands / Kilimani Shuttle', driverName: 'Uncle James Mworia', driverPhone: '0701112223', stops: ['School', 'Westlands Mall', 'Kilimani Ring Rd', 'Yaya Centre', 'Prestige Plaza'], status: 'Active', currentStopIndex: 2 },
     { id: 'route-b', name: 'Karen / Langata Express', driverName: 'Uncle Stephen Oloo', driverPhone: '0702223334', stops: ['School', 'Galleria Mall', 'Karen Triangle', 'Hillcrest Rd', 'Bomas'], status: 'Idle', currentStopIndex: 0 }
+  ],
+  examReports: [
+    {
+      id: 'rep-1',
+      studentId: '1',
+      schoolId: 'school-1',
+      term: 'Term 2',
+      year: '2026',
+      attendancePresent: 82,
+      attendanceTotal: 85,
+      conduct: 'Excellent',
+      extraCurricular: 'Active in School Soccer as a forward striker and participates regularly in drama performances.',
+      teacherRemarks: 'Musa has behaved wonderfully this term and showed exceptional leadership skills in school cleanups and peer support.',
+      principalRemarks: 'Superb dedication. We are incredibly proud of Musas performance and conduct inside Nairobi Primary School.',
+      teacherSignature: 'P. Wambui',
+      principalSignature: 'J. Mwangi',
+      published: true,
+      updatedAt: '2026-06-01'
+    },
+    {
+      id: 'rep-2',
+      studentId: '4',
+      schoolId: 'school-2',
+      term: 'Term 2',
+      year: '2026',
+      attendancePresent: 88,
+      attendanceTotal: 90,
+      conduct: 'Very Good',
+      extraCurricular: 'A key participant in debate contests and school band rehearsals.',
+      teacherRemarks: 'Chloe has continued to shine in creative reading and critical analytical discussions.',
+      principalRemarks: 'An outstanding high achiever. Keep up the high effort levels!',
+      teacherSignature: 'C. Carter',
+      principalSignature: 'A. Pendelton',
+      published: true,
+      updatedAt: '2026-06-03'
+    }
   ]
 };
 
@@ -168,8 +206,11 @@ let dbState: DatabaseState = { ...initialData };
 async function initTables() {
   const client = await pool.connect();
   try {
-    const tableCheck = await client.query("SELECT to_regclass('public.app_users')");
-    if (tableCheck.rows[0] && tableCheck.rows[0].to_regclass) {
+    const tableCheck = await client.query("SELECT to_regclass('public.app_users') as app_users, to_regclass('public.exam_reports') as exam_reports");
+    const hasAppUsers = tableCheck.rows[0] && tableCheck.rows[0].app_users;
+    const hasExamReports = tableCheck.rows[0] && tableCheck.rows[0].exam_reports;
+
+    if (hasAppUsers && hasExamReports) {
       // Tables already exist; bypass CREATE TABLE queries for instant serverless cold-starts
       return;
     }
@@ -326,6 +367,26 @@ async function initTables() {
     `);
 
     await client.query(`
+      CREATE TABLE IF NOT EXISTS exam_reports (
+        id TEXT PRIMARY KEY,
+        student_id TEXT NOT NULL,
+        school_id TEXT NOT NULL,
+        term TEXT NOT NULL,
+        year TEXT NOT NULL,
+        attendance_present INTEGER DEFAULT 0,
+        attendance_total INTEGER DEFAULT 0,
+        conduct TEXT NOT NULL,
+        extra_curricular TEXT DEFAULT '',
+        teacher_remarks TEXT DEFAULT '',
+        principal_remarks TEXT DEFAULT '',
+        teacher_signature TEXT DEFAULT '',
+        principal_signature TEXT DEFAULT '',
+        published BOOLEAN DEFAULT TRUE,
+        updated_at TEXT DEFAULT ''
+      );
+    `);
+
+    await client.query(`
       CREATE TABLE IF NOT EXISTS app_users (
         email TEXT PRIMARY KEY,
         name TEXT NOT NULL,
@@ -434,7 +495,61 @@ async function initTables() {
           [item.id, item.name, item.driverName, item.driverPhone, JSON.stringify(item.stops), item.status, item.currentStopIndex]
         );
       }
+      
+      // Seed examReports
+      if (initialData.examReports) {
+        for (const item of initialData.examReports) {
+          await client.query(
+            'INSERT INTO exam_reports (id, student_id, school_id, term, year, attendance_present, attendance_total, conduct, extra_curricular, teacher_remarks, principal_remarks, teacher_signature, principal_signature, published, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)',
+            [
+              item.id,
+              item.studentId,
+              item.schoolId,
+              item.term,
+              item.year,
+              item.attendancePresent || 0,
+              item.attendanceTotal || 0,
+              item.conduct || 'Good',
+              item.extraCurricular || '',
+              item.teacherRemarks || '',
+              item.principalRemarks || '',
+              item.teacherSignature || '',
+              item.principalSignature || '',
+              item.published === undefined ? true : item.published,
+              item.updatedAt || ''
+            ]
+          );
+        }
+      }
       console.log('[Somake Neon DB] Seeding completed.');
+    }
+
+    // If the database was already created but the exam_reports table has 0 rows, seed it independently!
+    const examReportsCountRes = await client.query('SELECT COUNT(*) FROM exam_reports');
+    if (parseInt(examReportsCountRes.rows[0].count, 10) === 0 && initialData.examReports) {
+      console.log('[Somake Neon DB] Seeding initial exam reports independently...');
+      for (const item of initialData.examReports) {
+        await client.query(
+          'INSERT INTO exam_reports (id, student_id, school_id, term, year, attendance_present, attendance_total, conduct, extra_curricular, teacher_remarks, principal_remarks, teacher_signature, principal_signature, published, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)',
+          [
+            item.id,
+            item.studentId,
+            item.schoolId,
+            item.term,
+            item.year,
+            item.attendancePresent || 0,
+            item.attendanceTotal || 0,
+            item.conduct || 'Good',
+            item.extraCurricular || '',
+            item.teacherRemarks || '',
+            item.principalRemarks || '',
+            item.teacherSignature || '',
+            item.principalSignature || '',
+            item.published === undefined ? true : item.published,
+            item.updatedAt || ''
+          ]
+        );
+      }
     }
   } catch (err) {
     console.error('[Somake Neon DB] Initialization/Seeding error in initTables():', err);
@@ -584,6 +699,30 @@ export async function loadDatabase(): Promise<DatabaseState> {
         currentStopIndex: r.current_stop_index || 0
       }))
     };
+
+    try {
+      const examReports = await pool.query('SELECT * FROM exam_reports');
+      dbState.examReports = examReports.rows.map(r => ({
+        id: r.id,
+        studentId: r.student_id,
+        schoolId: r.school_id,
+        term: r.term,
+        year: r.year,
+        attendancePresent: r.attendance_present || 0,
+        attendanceTotal: r.attendance_total || 0,
+        conduct: r.conduct || 'Good',
+        extraCurricular: r.extra_curricular || '',
+        teacherRemarks: r.teacher_remarks || '',
+        principalRemarks: r.principal_remarks || '',
+        teacherSignature: r.teacher_signature || '',
+        principalSignature: r.principal_signature || '',
+        published: r.published === undefined || r.published === null ? true : r.published,
+        updatedAt: r.updated_at || ''
+      }));
+    } catch (e) {
+      console.log('[Somake Neon DB] Postgres table exam_reports query failed, using in-memory pre-seeds on the client');
+      dbState.examReports = initialData.examReports || [];
+    }
     console.log('[Somake Neon DB] Successfully loaded database state from PostgreSQL (concurrently).');
   } catch (err) {
     console.error('[Somake Neon DB] Failed to load data from database:', err);
@@ -601,7 +740,7 @@ export async function saveDatabase(): Promise<void> {
     await client.query('BEGIN');
 
     // Truncate tables with CASCADE
-    await client.query('TRUNCATE schools, staff, school_classes, students, fee_records, assessments, grades, attendance, lms_materials, lms_submissions, dormitories, bus_routes CASCADE');
+    await client.query('TRUNCATE schools, staff, school_classes, students, fee_records, assessments, grades, attendance, lms_materials, lms_submissions, dormitories, bus_routes, exam_reports CASCADE');
 
     // Refill schools
     for (const item of dbState.schools) {
@@ -686,6 +825,32 @@ export async function saveDatabase(): Promise<void> {
         'INSERT INTO bus_routes (id, name, driver_name, driver_phone, stops, status, current_stop_index) VALUES ($1, $2, $3, $4, $5, $6, $7)',
         [item.id, item.name, item.driverName, item.driverPhone || '', JSON.stringify(item.stops), item.status, item.currentStopIndex || 0]
       );
+    }
+
+    // Refill examReports
+    if (dbState.examReports) {
+      for (const item of dbState.examReports) {
+        await client.query(
+          'INSERT INTO exam_reports (id, student_id, school_id, term, year, attendance_present, attendance_total, conduct, extra_curricular, teacher_remarks, principal_remarks, teacher_signature, principal_signature, published, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)',
+          [
+            item.id, 
+            item.studentId, 
+            item.schoolId, 
+            item.term, 
+            item.year, 
+            item.attendancePresent || 0, 
+            item.attendanceTotal || 0, 
+            item.conduct || 'Good', 
+            item.extraCurricular || '', 
+            item.teacherRemarks || '', 
+            item.principalRemarks || '', 
+            item.teacherSignature || '', 
+            item.principalSignature || '', 
+            item.published === undefined ? true : item.published, 
+            item.updatedAt || ''
+          ]
+        );
+      }
     }
 
     await client.query('COMMIT');

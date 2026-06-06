@@ -111,9 +111,27 @@ export interface BusRoute {
 
 export interface OfflineAction {
   id: string;
-  actionType: 'create_student' | 'edit_student' | 'approve_student' | 'reject_student' | 'grade_student' | 'mark_attendance' | 'submit_lms' | 'add_material' | 'parent_approve' | 'create_school' | 'create_staff' | 'create_class' | 'record_payment' | 'link_staff';
+  actionType: 'create_student' | 'edit_student' | 'approve_student' | 'reject_student' | 'grade_student' | 'mark_attendance' | 'submit_lms' | 'add_material' | 'parent_approve' | 'create_school' | 'create_staff' | 'create_class' | 'record_payment' | 'link_staff' | 'submit_exam_report';
   payload: any;
   timestamp: string;
+}
+
+export interface ExamReport {
+  id: string;
+  studentId: string;
+  schoolId: string;
+  term: string; // e.g. 'Term 1' | 'Term 2' | 'Term 3'
+  year: string; // e.g. '2026'
+  attendancePresent: number;
+  attendanceTotal: number;
+  conduct: string; // e.g. 'Excellent' | 'Good' | 'Needs Improvement' etc.
+  extraCurricular: string;
+  teacherRemarks: string;
+  principalRemarks: string;
+  teacherSignature: string;
+  principalSignature: string;
+  published: boolean;
+  updatedAt: string;
 }
 
 export interface AddOnModules {

@@ -128,7 +128,8 @@ registerGet('/api/state', (req, res) => {
     schools: db.schools,
     staff: db.staff,
     schoolClasses: db.schoolClasses,
-    feeRecords: db.feeRecords
+    feeRecords: db.feeRecords,
+    examReports: db.examReports || []
   });
 });
 
@@ -313,6 +314,20 @@ registerPost('/api/sync', async (req, res) => {
           } else {
             syncResults.push({ id: action.id, status: 'failed', error: 'Submission not found on server.' });
           }
+          break;
+        }
+
+        case 'submit_exam_report': {
+          if (!db.examReports) db.examReports = [];
+          const idx = db.examReports.findIndex(
+            r => r.studentId === payload.studentId && r.term === payload.term && r.year === payload.year
+          );
+          if (idx !== -1) {
+            db.examReports[idx] = { ...db.examReports[idx], ...payload };
+          } else {
+            db.examReports.push(payload);
+          }
+          syncResults.push({ id: action.id, status: 'success', message: 'Exam report synced.' });
           break;
         }
 
