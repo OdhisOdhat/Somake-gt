@@ -9,8 +9,6 @@ import {
   Send, 
   CheckCircle2, 
   X, 
-  Bus, 
-  Home, 
   AlertTriangle 
 } from 'lucide-react';
 import { 
@@ -61,7 +59,12 @@ export default function ClassesTab({
   onAddDormWelfareLog
 }: ClassesTabProps) {
   const activeSchool = schools.find(s => s.id === activeSchoolId);
-  const { userRole, showToast } = useAppContext();
+  const { userRole, showToast, selectedTeacherId } = useAppContext();
+
+  const isSuperAdmin = userRole === 'super_admin';
+  const activeTeacherProfile = staff?.find(st => st.id === selectedTeacherId);
+  const isAppointedSchoolAdmin = userRole === 'teacher' && activeTeacherProfile && (activeTeacherProfile.role === 'Head Teacher' || activeTeacherProfile.role === 'Registrar');
+  const isAdmin = isSuperAdmin || isAppointedSchoolAdmin;
 
   if (!activeSchoolId || !activeSchool) {
     return <NoSchoolSelected title="Select a school profile" />;
@@ -501,140 +504,6 @@ export default function ClassesTab({
               })
             )}
           </div>
-        </div>
-
-        {/* Shuttles Transport and Dormitory Log Integrators inside Curriculum workspace */}
-        <div className="xl:col-span-12 grid grid-cols-1 md:grid-cols-2 gap-5 pt-3">
-          
-          {/* Shuttles fleet tracking card */}
-          <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-4">
-            <div>
-              <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-1.5">
-                <Bus className="w-4 h-4 text-sky-500 text-sky-600" /> Shuttles Transport fleet tracking
-              </h3>
-              <p className="text-[10.5px] text-slate-400 mt-0.5">Control route checkpoints, driver coordination, and dispatch stop progression.</p>
-            </div>
-
-            <div className="space-y-4">
-              {busRoutes.map(route => {
-                const assignedCount = students.filter(s => s.busRouteId === route.id && s.schoolId === activeSchoolId).length;
-                return (
-                  <div key={route.id} className="p-3.5 bg-slate-50/50 border border-slate-200 rounded-xl space-y-3 text-xs leading-normal">
-                    <div className="flex justify-between items-center gap-2 border-b border-slate-150 pb-2">
-                      <div>
-                        <h4 className="text-xs font-black text-slate-905">{route.name}</h4>
-                        <p className="text-[9.5px] text-slate-450 font-semibold">Driver: <strong>{route.driverName}</strong> | {route.driverPhone}</p>
-                      </div>
-                      <span className="text-[9px] font-black uppercase text-sky-700 bg-sky-50 px-2 py-0.5 rounded-md border border-sky-100">
-                        {route.status}
-                      </span>
-                    </div>
-
-                    {/* Progress tracking */}
-                    <div className="space-y-2 bg-white border border-slate-100 p-2.5 rounded-lg text-[10.5px] font-semibold text-slate-750">
-                      <div>
-                        Stop Progress: <strong className="text-sky-600 text-xs font-black">{route.stops[route.currentStopIndex]}</strong>
-                      </div>
-                      <div className="flex gap-1 overflow-x-auto scrollbar-none py-1">
-                        {route.stops.map((st, i) => (
-                          <div 
-                            key={i} 
-                            className={`h-4 px-2 rounded-full text-[9px] shrink-0 font-bold flex items-center justify-center ${
-                              i === route.currentStopIndex ? 'bg-sky-500 text-white shadow-3xs' : 'bg-slate-100 text-slate-400'
-                            }`}
-                          >
-                            {st}
-                          </div>
-                        ))}
-                      </div>
-
-                      <div className="flex justify-between items-center pt-2 border-t border-slate-50 mt-1">
-                        <span className="text-[10px] text-slate-400">{assignedCount} commuters assigned</span>
-                        <button
-                          onClick={() => onTriggerBusStop(route.id)}
-                          className="text-[10px] bg-slate-905 text-white hover:bg-slate-805 px-2.5 py-1 rounded-md font-black shadow-xs"
-                        >
-                          Dispatch Stop
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="p-2 bg-amber-50/60 border border-amber-100/50 text-[9.5px] italic text-amber-900 rounded-lg">
-                      SMS dispatched: "Shuttle {route.name} departed stop [{route.stops[route.currentStopIndex]}]. Guardian alerted."
-                    </div>
-
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Dormitory Hostel Welfare Logs card */}
-          <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-4">
-            <div>
-              <h3 className="text-sm font-extrabold text-slate-[#111] flex items-center gap-1.5">
-                <Home className="w-4 h-4 text-emerald-500" /> Hostels Dorm Welfare Logs (Peter Kiprop Warden logging)
-              </h3>
-              <p className="text-[10.5px] text-slate-400 mt-0.5">Record warden logs and health status checks for boarders.</p>
-            </div>
-
-            <div className="space-y-4">
-              {dormitories.map(dorm => {
-                const residents = students.filter(s => s.dormitoryId === dorm.id && s.schoolId === activeSchoolId);
-                return (
-                  <div key={dorm.id} className="p-3 bg-slate-50/50 border border-slate-200 rounded-xl space-y-3 text-xs leading-relaxed">
-                    <div className="flex justify-between items-center border-b border-slate-150 pb-2">
-                      <div>
-                        <h4 className="text-xs font-black text-slate-900">{dorm.name}</h4>
-                        <p className="text-[9.5px] text-slate-450 font-semibold">Warden: <strong>{dorm.wardenName}</strong></p>
-                      </div>
-                      <span className="text-[10px] font-bold text-slate-450">{residents.length} residents</span>
-                    </div>
-
-                    {/* Welfare Log Items */}
-                    <div className="space-y-1.5 max-h-[140px] overflow-y-auto pr-1">
-                      {dorm.welfareLogs.map((log, lIdx) => {
-                        const std = students.find(s => s.id === log.studentId);
-                        return (
-                          <div key={lIdx} className="p-2 bg-white border border-slate-150 rounded-lg text-[10.5px] font-semibold leading-normal">
-                            <div className="flex justify-between text-[9px] text-slate-400 mb-0.5 font-bold">
-                              <span>Pupil: {std ? std.name : 'Resident'}</span>
-                              <span>{log.date}</span>
-                            </div>
-                            <p className="text-slate-650 italic font-mono font-medium">"{log.notes}"</p>
-                          </div>
-                        );
-                      })}
-                    </div>
-
-                    {/* Log generator */}
-                    <div className="flex gap-2.5 items-center pt-1">
-                      <input 
-                        type="text"
-                        id={`add-dorm-log-input-${dorm.id}`}
-                        placeholder="Asthma inhaler checked / clean up task..."
-                        className="w-full text-xs p-2 text-slate-800 bg-white border border-slate-200 focus:border-indigo-500 rounded-lg"
-                      />
-                      <button
-                        onClick={() => {
-                          const inputNode = document.getElementById(`add-dorm-log-input-${dorm.id}`) as HTMLInputElement;
-                          if (inputNode && inputNode.value.trim() && residents[0]) {
-                            onAddDormWelfareLog(dorm.id, residents[0].id, inputNode.value.trim());
-                            inputNode.value = '';
-                          }
-                        }}
-                        className="bg-indigo-600 hover:bg-slate-900 text-white text-[10px] font-black px-3.5 py-2 rounded-lg shrink-0 transition-colors"
-                      >
-                        Add Log
-                      </button>
-                    </div>
-
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
         </div>
 
       </div>
