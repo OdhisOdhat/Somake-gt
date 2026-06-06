@@ -111,7 +111,7 @@ export interface BusRoute {
 
 export interface OfflineAction {
   id: string;
-  actionType: 'create_student' | 'edit_student' | 'approve_student' | 'reject_student' | 'grade_student' | 'mark_attendance' | 'submit_lms' | 'add_material' | 'parent_approve' | 'create_school' | 'create_staff' | 'create_class' | 'record_payment' | 'link_staff' | 'submit_exam_report';
+  actionType: 'create_student' | 'edit_student' | 'approve_student' | 'reject_student' | 'grade_student' | 'mark_attendance' | 'submit_lms' | 'add_material' | 'parent_approve' | 'create_school' | 'create_staff' | 'create_class' | 'record_payment' | 'link_staff' | 'submit_exam_report' | 'update_school';
   payload: any;
   timestamp: string;
 }
@@ -150,6 +150,7 @@ export interface School {
   phone: string;
   email: string;
   address: string;
+  logoUrl?: string;
 }
 
 export interface Staff {

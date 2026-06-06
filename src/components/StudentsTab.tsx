@@ -1330,6 +1330,13 @@ export default function StudentsTab({
                 {/* Form buttons */}
                 <div className="border-t border-slate-100 pt-4 flex gap-2">
                   <button
+                    type="button"
+                    onClick={() => setShowReportModal(false)}
+                    className="px-4 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-xl font-bold font-sans text-center cursor-pointer text-xs transition-colors"
+                  >
+                    Close compiler
+                  </button>
+                  <button
                     type="submit"
                     className="flex-1 bg-emerald-600 hover:bg-[#047857] text-white py-2.5 px-4 rounded-xl font-bold font-sans shadow-sm text-center flex items-center justify-center gap-1.5 cursor-pointer text-xs"
                   >
@@ -1365,9 +1372,20 @@ export default function StudentsTab({
                 {/* Visual Header */}
                 <div className="border-b-4 border-slate-900 pb-5 text-center relative">
                   {/* Crest design */}
-                  <div className="mx-auto w-12 h-12 bg-slate-900 text-white rounded-xl flex items-center justify-center font-serif text-xl font-black mb-2 shadow-sm uppercase tracking-wide">
-                    {activeSchool.name.substring(0, 1)}
-                  </div>
+                  {activeSchool.logoUrl ? (
+                    <div className="mx-auto w-16 h-16 mb-2 flex items-center justify-center">
+                      <img 
+                        src={activeSchool.logoUrl} 
+                        alt="School Logo" 
+                        className="max-h-16 max-w-16 object-contain rounded-xl shadow-xs"
+                        referrerPolicy="no-referrer"
+                      />
+                    </div>
+                  ) : (
+                    <div className="mx-auto w-12 h-12 bg-slate-900 text-white rounded-xl flex items-center justify-center font-serif text-xl font-black mb-2 shadow-sm uppercase tracking-wide">
+                      {activeSchool.name.substring(0, 1)}
+                    </div>
+                  )}
                   
                   <h2 className="text-lg font-black tracking-tight text-slate-900 uppercase">{activeSchool.name}</h2>
                   <p className="text-[10px] text-slate-500 font-bold tracking-widest uppercase mt-0.5">{activeSchool.address} • Email: {activeSchool.email || 'info@school.ac.ke'}</p>

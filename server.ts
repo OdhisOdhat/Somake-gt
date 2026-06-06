@@ -339,10 +339,30 @@ registerPost('/api/sync', async (req, res) => {
             curriculum: payload.curriculum,
             phone: payload.phone || '',
             email: payload.email || '',
-            address: payload.address || ''
+            address: payload.address || '',
+            logoUrl: payload.logoUrl || ''
           };
           db.schools.push(newSchool);
           syncResults.push({ id: action.id, status: 'success', message: `School ${newSchool.name} synced.` });
+          break;
+        }
+
+        case 'update_school': {
+          const { id, name, phone, email, address, logoUrl } = payload;
+          const idx = db.schools.findIndex(s => s.id === id);
+          if (idx !== -1) {
+            db.schools[idx] = {
+              ...db.schools[idx],
+              name: name !== undefined ? name : db.schools[idx].name,
+              phone: phone !== undefined ? phone : db.schools[idx].phone,
+              email: email !== undefined ? email : db.schools[idx].email,
+              address: address !== undefined ? address : db.schools[idx].address,
+              logoUrl: logoUrl !== undefined ? logoUrl : db.schools[idx].logoUrl
+            };
+            syncResults.push({ id: action.id, status: 'success', message: `School ${id} profile updated.` });
+          } else {
+            syncResults.push({ id: action.id, status: 'error', message: `School ID ${id} not found.` });
+          }
           break;
         }
 

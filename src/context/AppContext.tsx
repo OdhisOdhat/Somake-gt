@@ -125,6 +125,7 @@ interface AppContextType {
   handleDeleteStaff: (id: string) => Promise<void>;
   handleDeleteSchool: (id: string) => Promise<void>;
   handleGenerateAiComment: (studentId: string) => Promise<string>;
+  handleUpdateSchoolProfile: (schoolId: string, updatedFields: Partial<School>) => void;
   darkMode: boolean;
   toggleDarkMode: () => void;
 }
@@ -952,6 +953,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
     showToast(`Exam report for ${report.term} ${report.year} is updated!`, 'success');
   };
 
+  const handleUpdateSchoolProfile = (schoolId: string, updatedFields: Partial<School>) => {
+    setSchools(prev => prev.map(s => {
+      if (s.id === schoolId) {
+        return { ...s, ...updatedFields };
+      }
+      return s;
+    }));
+    dispatchActionToServer('update_school', { id: schoolId, ...updatedFields });
+    showToast('School profile customized and synchronized successfully!', 'success');
+  };
+
   // Archive & Delete operations with DB syncing
   const handleDeleteStudent = async (id: string) => {
     setStudents(prev => prev.filter(s => s.id !== id));
@@ -1076,6 +1088,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       handleDeleteStaff,
       handleDeleteSchool,
       handleGenerateAiComment,
+      handleUpdateSchoolProfile,
       examReports,
       setExamReports,
       handleSaveExamReport,

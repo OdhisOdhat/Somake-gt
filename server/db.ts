@@ -224,9 +224,17 @@ async function initTables() {
         curriculum TEXT NOT NULL,
         phone TEXT DEFAULT '',
         email TEXT DEFAULT '',
-        address TEXT DEFAULT ''
+        address TEXT DEFAULT '',
+        logo_url TEXT DEFAULT ''
       );
     `);
+
+    // Ensure logo_url column exists in existing tables too
+    try {
+      await client.query("ALTER TABLE schools ADD COLUMN IF NOT EXISTS logo_url TEXT DEFAULT ''");
+    } catch (e) {
+      console.log('logo_url column already exists or alter table not supported:', e);
+    }
 
     await client.query(`
       CREATE TABLE IF NOT EXISTS staff (
@@ -414,8 +422,8 @@ async function initTables() {
       // Seed schools
       for (const item of initialData.schools) {
         await client.query(
-          'INSERT INTO schools (id, name, code, curriculum, phone, email, address) VALUES ($1, $2, $3, $4, $5, $6, $7)',
-          [item.id, item.name, item.code, item.curriculum, item.phone, item.email, item.address]
+          'INSERT INTO schools (id, name, code, curriculum, phone, email, address, logo_url) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
+          [item.id, item.name, item.code, item.curriculum, item.phone, item.email, item.address, item.logoUrl || '']
         );
       }
       // Seed staff
@@ -598,7 +606,8 @@ export async function loadDatabase(): Promise<DatabaseState> {
         curriculum: r.curriculum,
         phone: r.phone || '',
         email: r.email || '',
-        address: r.address || ''
+        address: r.address || '',
+        logoUrl: r.logo_url || ''
       })),
       staff: staff.rows.map(r => ({
         id: r.id,
@@ -745,8 +754,8 @@ export async function saveDatabase(): Promise<void> {
     // Refill schools
     for (const item of dbState.schools) {
       await client.query(
-        'INSERT INTO schools (id, name, code, curriculum, phone, email, address) VALUES ($1, $2, $3, $4, $5, $6, $7)',
-        [item.id, item.name, item.code, item.curriculum, item.phone || '', item.email || '', item.address || '']
+        'INSERT INTO schools (id, name, code, curriculum, phone, email, address, logo_url) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
+        [item.id, item.name, item.code, item.curriculum, item.phone || '', item.email || '', item.address || '', item.logoUrl || '']
       );
     }
     // Refill staff
