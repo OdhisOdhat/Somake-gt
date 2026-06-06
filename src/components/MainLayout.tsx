@@ -489,109 +489,111 @@ export default function MainLayout() {
       <main className="flex-1 flex flex-col h-full overflow-y-scroll overflow-x-hidden pt-6">
         
         {/* Active Session & Role impersonation Switcher */}
-        <div className="px-6 md:px-8 mb-6">
-          <div className="bg-slate-900 text-white rounded-2xl p-4 md:p-5 shadow-lg border border-slate-850 flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-emerald-450 animate-pulse"></span>
-                <span className="text-[10px] tracking-wider uppercase font-extrabold text-slate-400">Security Rights Sandbox Mode</span>
+        {currentUser?.role === 'super_admin' && (
+          <div className="px-6 md:px-8 mb-6 animate-in fade-in slide-in-from-top-4 duration-300">
+            <div className="bg-slate-900 text-white rounded-2xl p-4 md:p-5 shadow-lg border border-slate-850 flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-emerald-450 animate-pulse"></span>
+                  <span className="text-[10px] tracking-wider uppercase font-extrabold text-slate-400">Security Rights Sandbox Mode</span>
+                </div>
+                <h2 className="text-sm font-black text-white mt-1">Simulated User Persona</h2>
+                <p className="text-[10px] text-slate-400 font-medium">Verify how roles restrict screens, forms, dashboard metrics & read/write capabilities.</p>
               </div>
-              <h2 className="text-sm font-black text-white mt-1">Simulated User Persona</h2>
-              <p className="text-[10px] text-slate-400 font-medium">Verify how roles restrict screens, forms, dashboard metrics & read/write capabilities.</p>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  onClick={() => {
+                    setUserRole('super_admin');
+                    showToast('Provisioned Principal / Super-Admin Role (Unrestricted read/write)');
+                  }}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all ${
+                    userRole === 'super_admin'
+                      ? 'bg-indigo-600 text-white shadow-md font-extrabold'
+                      : 'bg-[#1e293b] text-slate-300 hover:bg-[#2e3e56]'
+                  }`}
+                >
+                  👑 School Principal
+                </button>
+                <button
+                  onClick={() => {
+                    setUserRole('teacher');
+                    showToast('Activating Classroom Staff credentials (Limited visibility)');
+                  }}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all ${
+                    userRole === 'teacher'
+                      ? 'bg-indigo-600 text-white shadow-md font-extrabold'
+                      : 'bg-[#1e293b] text-slate-300 hover:bg-[#2e3e56]'
+                  }`}
+                >
+                  🧑‍🏫 Classroom Teacher
+                </button>
+                <button
+                  onClick={() => {
+                    setUserRole('parent_student');
+                    // Switch the sidebar tab to dashboard if activeTab is not compatible
+                    if (['schools', 'students', 'staff', 'attendance'].includes(activeTab)) {
+                      setActiveTab('dashboard');
+                    }
+                    showToast('Activating Parent & Student portal');
+                  }}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all ${
+                    userRole === 'parent_student'
+                      ? 'bg-indigo-600 text-white shadow-md font-extrabold'
+                      : 'bg-[#1e293b] text-slate-300 hover:bg-[#2e3e56]'
+                  }`}
+                >
+                  🏡 Parent / Student
+                </button>
+              </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2">
-              <button
-                onClick={() => {
-                  setUserRole('super_admin');
-                  showToast('Provisioned Principal / Super-Admin Role (Unrestricted read/write)');
-                }}
-                className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all ${
-                  userRole === 'super_admin'
-                    ? 'bg-indigo-600 text-white shadow-md font-extrabold'
-                    : 'bg-[#1e293b] text-slate-300 hover:bg-[#2e3e56]'
-                }`}
-              >
-                👑 School Principal
-              </button>
-              <button
-                onClick={() => {
-                  setUserRole('teacher');
-                  showToast('Activating Classroom Staff credentials (Limited visibility)');
-                }}
-                className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all ${
-                  userRole === 'teacher'
-                    ? 'bg-indigo-600 text-white shadow-md font-extrabold'
-                    : 'bg-[#1e293b] text-slate-300 hover:bg-[#2e3e56]'
-                }`}
-              >
-                🧑‍🏫 Classroom Teacher
-              </button>
-              <button
-                onClick={() => {
-                  setUserRole('parent_student');
-                  // Switch the sidebar tab to dashboard if activeTab is not compatible
-                  if (['schools', 'students', 'staff', 'attendance'].includes(activeTab)) {
-                    setActiveTab('dashboard');
-                  }
-                  showToast('Activating Parent & Student portal');
-                }}
-                className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all ${
-                  userRole === 'parent_student'
-                    ? 'bg-indigo-600 text-white shadow-md font-extrabold'
-                    : 'bg-[#1e293b] text-slate-300 hover:bg-[#2e3e56]'
-                }`}
-              >
-                🏡 Parent / Student
-              </button>
-            </div>
+            {/* Conditional Role-selector Dropdowns */}
+            {userRole === 'teacher' && (
+              <div className="mt-3 bg-white border border-slate-200 p-3 rounded-xl shadow-xs flex flex-wrap items-center justify-between gap-3 text-xs">
+                <div className="flex items-center gap-2">
+                  <span className="p-1 px-2 rounded-lg bg-indigo-50 text-indigo-700 font-black text-[10px] uppercase border border-indigo-100">Active Staff</span>
+                  <span className="text-slate-500 font-bold">Acting Teacher credentials for:</span>
+                </div>
+                <select
+                  value={selectedTeacherId}
+                  onChange={(e) => {
+                    setSelectedTeacherId(e.target.value);
+                    const s = staff.find(st => st.id === e.target.value);
+                    showToast(`Acting as Teacher ${s?.name || ''}`);
+                  }}
+                  className="p-1.5 border border-slate-200 bg-[#f8fafc] rounded-lg font-black text-xs text-slate-800 focus:outline-none focus:border-indigo-500 cursor-pointer"
+                >
+                  {staff.map(st => (
+                    <option key={st.id} value={st.id}>{st.name} ({st.role})</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {userRole === 'parent_student' && (
+              <div className="mt-3 bg-white border border-slate-200 p-3 rounded-xl shadow-xs flex flex-wrap items-center justify-between gap-3 text-xs">
+                <div className="flex items-center gap-2">
+                  <span className="p-1 px-2 rounded-lg bg-emerald-50 text-emerald-700 font-black text-[10px] uppercase border border-emerald-100">Portal Pupil</span>
+                  <span className="text-slate-500 font-bold">Simulating Student & Parent view for:</span>
+                </div>
+                <select
+                  value={selectedStudentId}
+                  onChange={(e) => {
+                    setSelectedStudentId(e.target.value);
+                    const s = students.find(st => st.id === e.target.value);
+                    showToast(`Simulating Parent of ${s?.name || ''}`);
+                  }}
+                  className="p-1.5 border border-slate-200 bg-[#f8fafc] rounded-lg font-black text-xs text-slate-800 focus:outline-none focus:border-indigo-500 cursor-pointer"
+                >
+                  {students.map(st => (
+                    <option key={st.id} value={st.id}>{st.name} ({st.gradeLevel})</option>
+                  ))}
+                </select>
+              </div>
+            )}
           </div>
-
-          {/* Conditional Role-selector Dropdowns */}
-          {userRole === 'teacher' && (
-            <div className="mt-3 bg-white border border-slate-200 p-3 rounded-xl shadow-xs flex flex-wrap items-center justify-between gap-3 text-xs">
-              <div className="flex items-center gap-2">
-                <span className="p-1 px-2 rounded-lg bg-indigo-50 text-indigo-700 font-black text-[10px] uppercase border border-indigo-100">Active Staff</span>
-                <span className="text-slate-500 font-bold">Acting Teacher credentials for:</span>
-              </div>
-              <select
-                value={selectedTeacherId}
-                onChange={(e) => {
-                  setSelectedTeacherId(e.target.value);
-                  const s = staff.find(st => st.id === e.target.value);
-                  showToast(`Acting as Teacher ${s?.name || ''}`);
-                }}
-                className="p-1.5 border border-slate-200 bg-[#f8fafc] rounded-lg font-black text-xs text-slate-800 focus:outline-none focus:border-indigo-500 cursor-pointer"
-              >
-                {staff.map(st => (
-                  <option key={st.id} value={st.id}>{st.name} ({st.role})</option>
-                ))}
-              </select>
-            </div>
-          )}
-
-          {userRole === 'parent_student' && (
-            <div className="mt-3 bg-white border border-slate-200 p-3 rounded-xl shadow-xs flex flex-wrap items-center justify-between gap-3 text-xs">
-              <div className="flex items-center gap-2">
-                <span className="p-1 px-2 rounded-lg bg-emerald-50 text-emerald-700 font-black text-[10px] uppercase border border-emerald-100">Portal Pupil</span>
-                <span className="text-slate-500 font-bold">Simulating Student & Parent view for:</span>
-              </div>
-              <select
-                value={selectedStudentId}
-                onChange={(e) => {
-                  setSelectedStudentId(e.target.value);
-                  const s = students.find(st => st.id === e.target.value);
-                  showToast(`Simulating Parent of ${s?.name || ''}`);
-                }}
-                className="p-1.5 border border-slate-200 bg-[#f8fafc] rounded-lg font-black text-xs text-slate-800 focus:outline-none focus:border-indigo-500 cursor-pointer"
-              >
-                {students.map(st => (
-                  <option key={st.id} value={st.id}>{st.name} ({st.gradeLevel})</option>
-                ))}
-              </select>
-            </div>
-          )}
-        </div>
+        )}
         
         {/* Tab content area */}
         <div className="flex-1 px-6 md:px-8 pb-12">
