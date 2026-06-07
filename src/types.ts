@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-export type CurriculumType = 'CBE' | 'Cambridge';
+export type CurriculumType = 'CBE' | 'Cambridge' | '844';
 
 export interface Student {
   id: string;
@@ -162,6 +162,7 @@ export interface Staff {
   role: 'Teacher' | 'Head Teacher' | 'Registrar' | 'Bus Driver' | 'Warden';
   email: string;
   phone: string;
+  preferableSubjects?: string[];
 }
 
 export interface SchoolClass {

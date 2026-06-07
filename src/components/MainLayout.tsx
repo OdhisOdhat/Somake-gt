@@ -24,6 +24,7 @@ import ClassesTab from './ClassesTab';
 import AttendanceTab from './AttendanceTab';
 import FeesTab from './FeesTab';
 import ExamsTab from './ExamsTab';
+import { CBE_SUBJECTS, CAMBRIDGE_SUBJECTS, KENYAN_844_SUBJECTS } from '../utils/theme';
 
 export default function MainLayout() {
   const {
@@ -70,6 +71,8 @@ export default function MainLayout() {
     handleDeleteSchool,
     handleGenerateAiComment
   } = useAppContext();
+
+  const activeSchool = schools.find(s => s.id === activeSchoolId);
 
   // Authentication UI local states
   const [authTab, setAuthTab] = useState<'signin' | 'signup'>('signin');
@@ -754,6 +757,7 @@ export default function MainLayout() {
                   >
                     <option value="CBE (Kenya)">CBE (Kenya)</option>
                     <option value="Cambridge (International)">Cambridge (International)</option>
+                    <option value="844 (Kenya) - Phasing Out by 2027">8-4-4 (Kenya) — Phasing Out by 2027</option>
                   </select>
                 </div>
 
@@ -855,12 +859,28 @@ export default function MainLayout() {
                     onChange={e => setStudentForm({ ...studentForm, gradeLevel: e.target.value })}
                     className="w-full p-2.5 bg-[#f8fafc] border border-slate-200 rounded-xl font-bold"
                   >
-                    <option value="Grade 4">Grade 4 (Formative Elementary)</option>
-                    <option value="Grade 5">Grade 5 (Formative Elementary)</option>
-                    <option value="Grade 6">Grade 6 (Formative Elementary)</option>
-                    <option value="Year 7">Year 7 Middle School</option>
-                    <option value="Year 8">Year 8 Middle School</option>
-                    <option value="Year 9">Year 9 Middle School</option>
+                    {(!activeSchool || activeSchool.curriculum.includes('CBE')) && (
+                      <>
+                        <option value="Grade 4">Grade 4 (Formative CBE)</option>
+                        <option value="Grade 5">Grade 5 (Formative CBE)</option>
+                        <option value="Grade 6">Grade 6 (Formative CBE)</option>
+                      </>
+                    )}
+                    {activeSchool?.curriculum.includes('Cambridge') && (
+                      <>
+                        <option value="Year 7">Year 7 Middle School</option>
+                        <option value="Year 8">Year 8 Middle School</option>
+                        <option value="Year 9">Year 9 Middle School</option>
+                      </>
+                    )}
+                    {activeSchool?.curriculum.includes('844') && (
+                      <>
+                        <option value="Form 1">Form 1 (8-4-4 secondary)</option>
+                        <option value="Form 2">Form 2 (8-4-4 secondary)</option>
+                        <option value="Form 3">Form 3 (8-4-4 secondary)</option>
+                        <option value="Form 4">Form 4 (Form 4 Candidate Class — Phasing Out 2027)</option>
+                      </>
+                    )}
                   </select>
                 </div>
 
@@ -983,6 +1003,53 @@ export default function MainLayout() {
                   <option value="Warden">Warden Officer</option>
                 </select>
               </div>
+
+              {staffForm.role === 'Teacher' && (() => {
+                const targetSchool = schools.find(s => s.id === (staffForm.schoolId || activeSchoolId));
+                const isCbe = targetSchool?.curriculum.includes('CBE');
+                const is844 = targetSchool?.curriculum.includes('844');
+                const subjectsList = isCbe ? CBE_SUBJECTS : is844 ? KENYAN_844_SUBJECTS : CAMBRIDGE_SUBJECTS;
+
+                return (
+                  <div className="bg-slate-50 border border-slate-250/60 p-3 h-auto rounded-2xl">
+                    <label className="text-[10px] uppercase font-bold text-indigo-700 mb-1 block">
+                      ✎ Preferable Teaching Subjects & Speciality
+                    </label>
+                    <p className="text-[9px] text-slate-450 mb-2 font-normal leading-normal">
+                      Assign one or multiple curriculum subjects this educator is qualified and prefers to lead:
+                    </p>
+                    <div className="grid grid-cols-2 gap-1.5 max-h-36 overflow-y-auto pr-1">
+                      {subjectsList.map((subject) => {
+                        const isChecked = (staffForm.preferableSubjects || []).includes(subject);
+                        return (
+                          <label 
+                            key={subject} 
+                            className={`flex items-center gap-2 p-1.5 rounded-lg border text-[11px] font-bold cursor-pointer transition-all ${
+                              isChecked 
+                                ? 'bg-indigo-50 border-indigo-200 text-indigo-800' 
+                                : 'bg-white border-slate-150 hover:bg-slate-50 text-slate-650'
+                            }`}
+                          >
+                            <input 
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={() => {
+                                const currentPrefs = staffForm.preferableSubjects || [];
+                                const newPrefs = currentPrefs.includes(subject)
+                                  ? currentPrefs.filter((s: string) => s !== subject)
+                                  : [...currentPrefs, subject];
+                                setStaffForm({ ...staffForm, preferableSubjects: newPrefs });
+                              }}
+                              className="w-3.5 h-3.5 text-indigo-600 focus:ring-indigo-500 rounded border-slate-300"
+                            />
+                            <span className="truncate">{subject}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })()}
 
               <div>
                 <label className="text-[10px] uppercase font-black text-slate-450 mb-1 block">Email address</label>

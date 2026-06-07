@@ -24,7 +24,7 @@ import {
 } from '../types';
 import NoSchoolSelected from './NoSchoolSelected';
 import { useAppContext } from '../context/AppContext';
-import { CBE_SUBJECTS, CAMBRIDGE_SUBJECTS } from '../utils/theme';
+import { CBE_SUBJECTS, CAMBRIDGE_SUBJECTS, KENYAN_844_SUBJECTS } from '../utils/theme';
 
 interface ClassesTabProps {
   activeSchoolId: string;
@@ -244,7 +244,7 @@ export default function ClassesTab({
                 <div className="col-span-1">
                   <label className="text-[10px] uppercase font-bold text-slate-400 block mb-0.5">Subject Selection *</label>
                   <select
-                    value={CBE_SUBJECTS.includes(newMatSubject) || CAMBRIDGE_SUBJECTS.includes(newMatSubject) ? newMatSubject : (newMatSubject ? 'custom_subject' : '')}
+                    value={CBE_SUBJECTS.includes(newMatSubject) || CAMBRIDGE_SUBJECTS.includes(newMatSubject) || KENYAN_844_SUBJECTS.includes(newMatSubject) ? newMatSubject : (newMatSubject ? 'custom_subject' : '')}
                     onChange={e => {
                       if (e.target.value !== 'custom_subject') {
                         setNewMatSubject(e.target.value);
@@ -254,7 +254,12 @@ export default function ClassesTab({
                     required
                   >
                     <option value="">-- Choose Subject --</option>
-                    {( (activeSchool?.curriculum ?? 'CBE').includes('CBE') ? CBE_SUBJECTS : CAMBRIDGE_SUBJECTS ).map(sub => (
+                    {( (activeSchool?.curriculum ?? 'CBE').includes('CBE') 
+                        ? CBE_SUBJECTS 
+                        : (activeSchool?.curriculum ?? '').includes('844') 
+                          ? KENYAN_844_SUBJECTS 
+                          : CAMBRIDGE_SUBJECTS 
+                    ).map(sub => (
                       <option key={sub} value={sub}>{sub}</option>
                     ))}
                     <option value="custom_subject">✎ Write Custom Subject...</option>

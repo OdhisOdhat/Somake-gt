@@ -202,9 +202,24 @@ export default function StaffTab({
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <h3 className="text-xs font-black text-slate-900 truncate">{st.name}</h3>
-                    <span className="inline-block text-[9.5px] font-black uppercase text-indigo-700 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-md mt-1.5">
-                      {st.role}
-                    </span>
+                    <div className="flex flex-wrap items-center gap-1 mt-1.5">
+                      <span className="inline-block text-[9.5px] font-black uppercase text-indigo-750 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-md">
+                        {st.role}
+                      </span>
+                    </div>
+
+                    {st.role === 'Teacher' && st.preferableSubjects && st.preferableSubjects.length > 0 && (
+                      <div className="mt-2.5 space-y-1">
+                        <span className="text-[8.5px] font-extrabold text-indigo-505 block uppercase tracking-wider">Preferable Subjects:</span>
+                        <div className="flex flex-wrap gap-1 max-h-20 overflow-y-auto pr-0.5">
+                          {st.preferableSubjects.map(sub => (
+                            <span key={sub} className="text-[8.5px] font-extrabold tracking-tight text-indigo-850 bg-indigo-100/50 border border-indigo-200/40 px-1.5 py-0.5 rounded-md">
+                              📚 {sub}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
 
                     <div className="mt-3.5 space-y-1">
                       <span className="text-[9px] font-bold text-slate-400 block uppercase tracking-wider">Linked School:</span>

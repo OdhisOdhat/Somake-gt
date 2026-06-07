@@ -271,7 +271,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // Forms states
   const [schoolForm, setSchoolForm] = useState({ name: '', code: '', curriculum: 'CBE (Kenya)', phone: '', email: '', address: '' });
   const [studentForm, setStudentForm] = useState({ name: '', gender: 'Male' as 'Male' | 'Female', gradeLevel: 'Grade 4', boardingStatus: 'Day' as 'Day' | 'Boarder', dormitoryId: '', busRouteId: '', parentEmail: '', parentPhone: '' });
-  const [staffForm, setStaffForm] = useState({ name: '', role: 'Teacher' as any, email: '', phone: '', schoolId: '' });
+  const [staffForm, setStaffForm] = useState({ name: '', role: 'Teacher' as any, email: '', phone: '', schoolId: '', preferableSubjects: [] as string[] });
   const [classForm, setClassForm] = useState({ name: '', teacherId: '' });
   const [paymentForm, setPaymentForm] = useState({ amount: '', reference: '', date: '2026-05-28' });
 
@@ -577,7 +577,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
 
     const selectedSchool = schools.find(s => s.id === activeSchoolId);
-    const curr: CurriculumType = selectedSchool?.curriculum.includes('CBE') ? 'CBE' : 'Cambridge';
+    const curr: CurriculumType = selectedSchool?.curriculum.includes('CBE') 
+      ? 'CBE' 
+      : selectedSchool?.curriculum.includes('844') 
+        ? '844' 
+        : 'Cambridge';
     const studId = String(students.length + 101);
     const isTeacher = userRole === 'teacher';
     const statusVal = isTeacher ? 'Pending_Enrollment' : 'Approved';
@@ -636,14 +640,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
       name: staffForm.name,
       role: staffForm.role,
       email: staffForm.email || 'staff@skoola.edu',
-      phone: staffForm.phone || '0700000000'
+      phone: staffForm.phone || '0700000000',
+      preferableSubjects: staffForm.preferableSubjects || []
     };
 
     setStaff(prev => [...prev, payload]);
     dispatchActionToServer('create_staff', payload);
     showToast(`Staff member ${staffForm.name} enrolled successfully!`, 'success');
 
-    setStaffForm({ name: '', role: 'Teacher', email: '', phone: '', schoolId: '' });
+    setStaffForm({ name: '', role: 'Teacher', email: '', phone: '', schoolId: '', preferableSubjects: [] as string[] });
     setShowStaffModal(false);
   };
 
@@ -907,7 +912,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     const amountNum = Number(paymentForm.amount);
     const selectedSchool = schools.find(s => s.id === activeSchoolId);
-    const invoiceTotal = selectedSchool?.curriculum.includes('CBE') ? 45000 : 120000;
+    const isKenyan = selectedSchool?.curriculum.includes('CBE') || selectedSchool?.curriculum.includes('844');
+    const invoiceTotal = isKenyan ? 45000 : 120000;
 
     const payload = {
       id: `fee-${feeRecords.length + 101}`,

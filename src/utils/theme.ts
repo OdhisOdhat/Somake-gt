@@ -144,3 +144,25 @@ export const CAMBRIDGE_SUBJECTS = [
   "Spanish"
 ];
 
+export const KENYAN_844_SUBJECTS = [
+  "Mathematics",
+  "English Language",
+  "Kiswahili Lugha",
+  "Biology",
+  "Chemistry",
+  "Physics",
+  "History & Government",
+  "Geography",
+  "Christian Religious Education (CRE)",
+  "Islamic Religious Education (IRE)",
+  "Hindu Religious Education (HRE)",
+  "Home Science",
+  "Art & Design",
+  "Agriculture",
+  "Computer Studies",
+  "Business Studies",
+  "French",
+  "German",
+  "Music"
+];
+

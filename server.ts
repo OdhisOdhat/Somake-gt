@@ -379,7 +379,8 @@ registerPost('/api/sync', async (req, res) => {
             name: payload.name,
             role: payload.role,
             email: payload.email || '',
-            phone: payload.phone || ''
+            phone: payload.phone || '',
+            preferableSubjects: payload.preferableSubjects || []
           };
           db.staff.push(newStaff);
           syncResults.push({ id: action.id, status: 'success', message: `Staff ${newStaff.name} synced.` });

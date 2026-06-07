@@ -1075,12 +1075,28 @@ export default function StudentsTab({
                     onChange={e => setEditForm({ ...editForm, gradeLevel: e.target.value })}
                     className="w-full p-2.5 bg-[#f8fafc] border border-slate-200 rounded-xl font-bold"
                   >
-                    <option value="Grade 4">Grade 4 (Formative Elementary)</option>
-                    <option value="Grade 5">Grade 5 (Formative Elementary)</option>
-                    <option value="Grade 6">Grade 6 (Formative Elementary)</option>
-                    <option value="Year 7">Year 7 Middle School</option>
-                    <option value="Year 8">Year 8 Middle School</option>
-                    <option value="Year 9">Year 9 Middle School</option>
+                    {(!activeSchool || activeSchool.curriculum.includes('CBE')) && (
+                      <>
+                        <option value="Grade 4">Grade 4 (Formative CBE)</option>
+                        <option value="Grade 5">Grade 5 (Formative CBE)</option>
+                        <option value="Grade 6">Grade 6 (Formative CBE)</option>
+                      </>
+                    )}
+                    {activeSchool?.curriculum.includes('Cambridge') && (
+                      <>
+                        <option value="Year 7">Year 7 Middle School</option>
+                        <option value="Year 8">Year 8 Middle School</option>
+                        <option value="Year 9">Year 9 Middle School</option>
+                      </>
+                    )}
+                    {activeSchool?.curriculum.includes('844') && (
+                      <>
+                        <option value="Form 1">Form 1 (8-4-4 secondary)</option>
+                        <option value="Form 2">Form 2 (8-4-4 secondary)</option>
+                        <option value="Form 3">Form 3 (8-4-4 secondary)</option>
+                        <option value="Form 4">Form 4 (Form 4 Candidate Class — Phasing Out 2027)</option>
+                      </>
+                    )}
                   </select>
                 </div>
 

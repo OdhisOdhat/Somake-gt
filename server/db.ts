@@ -301,6 +301,12 @@ async function initTables() {
       console.log('slogan/theme_color columns already exist or alter table not supported:', e);
     }
 
+    try {
+      await client.query("ALTER TABLE staff ADD COLUMN IF NOT EXISTS preferable_subjects TEXT DEFAULT ''");
+    } catch (e) {
+      console.log('preferable_subjects column already exists or alter table not supported:', e);
+    }
+
     await client.query(`
       CREATE TABLE IF NOT EXISTS staff (
         id TEXT PRIMARY KEY,
@@ -308,7 +314,8 @@ async function initTables() {
         name TEXT NOT NULL,
         role TEXT NOT NULL,
         email TEXT DEFAULT '',
-        phone TEXT DEFAULT ''
+        phone TEXT DEFAULT '',
+        preferable_subjects TEXT DEFAULT ''
       );
     `);
 
@@ -523,8 +530,8 @@ async function initTables() {
       // Seed staff
       for (const item of initialData.staff) {
         await client.query(
-          'INSERT INTO staff (id, school_id, name, role, email, phone) VALUES ($1, $2, $3, $4, $5, $6)',
-          [item.id, item.schoolId, item.name, item.role, item.email, item.phone]
+          'INSERT INTO staff (id, school_id, name, role, email, phone, preferable_subjects) VALUES ($1, $2, $3, $4, $5, $6, $7)',
+          [item.id, item.schoolId, item.name, item.role, item.email, item.phone, Array.isArray(item.preferableSubjects) ? item.preferableSubjects.join(',') : '']
         );
       }
       // Seed schoolClasses
@@ -711,7 +718,8 @@ export async function loadDatabase(): Promise<DatabaseState> {
         name: r.name,
         role: r.role,
         email: r.email || '',
-        phone: r.phone || ''
+        phone: r.phone || '',
+        preferableSubjects: r.preferable_subjects ? r.preferable_subjects.split(',').filter(Boolean) : []
       })),
       schoolClasses: schoolClasses.rows.map(r => ({
         id: r.id,
@@ -895,8 +903,8 @@ export async function saveDatabase(): Promise<void> {
     // Refill staff
     for (const item of dbState.staff) {
       await client.query(
-        'INSERT INTO staff (id, school_id, name, role, email, phone) VALUES ($1, $2, $3, $4, $5, $6)',
-        [item.id, item.schoolId, item.name, item.role, item.email || '', item.phone || '']
+        'INSERT INTO staff (id, school_id, name, role, email, phone, preferable_subjects) VALUES ($1, $2, $3, $4, $5, $6, $7)',
+        [item.id, item.schoolId, item.name, item.role, item.email || '', item.phone || '', Array.isArray(item.preferableSubjects) ? item.preferableSubjects.join(',') : '']
       );
     }
     // Refill schoolClasses

@@ -17,7 +17,7 @@ import {
   Info
 } from 'lucide-react';
 import { ExamSchedule, PortalNotification } from '../types';
-import { CBE_SUBJECTS, CAMBRIDGE_SUBJECTS } from '../utils/theme';
+import { CBE_SUBJECTS, CAMBRIDGE_SUBJECTS, KENYAN_844_SUBJECTS } from '../utils/theme';
 
 export default function ExamsTab() {
   const {
@@ -212,7 +212,7 @@ export default function ExamsTab() {
                   <div>
                     <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1">Subject Selection</label>
                     <select
-                      value={CBE_SUBJECTS.includes(subject) || CAMBRIDGE_SUBJECTS.includes(subject) ? subject : (subject ? 'custom_subject' : '')}
+                      value={CBE_SUBJECTS.includes(subject) || CAMBRIDGE_SUBJECTS.includes(subject) || KENYAN_844_SUBJECTS.includes(subject) ? subject : (subject ? 'custom_subject' : '')}
                       onChange={e => {
                         if (e.target.value !== 'custom_subject') {
                           setSubject(e.target.value);
@@ -222,7 +222,12 @@ export default function ExamsTab() {
                       required
                     >
                       <option value="">-- Choose Subject --</option>
-                      {( (currentSchool?.curriculum ?? 'CBE').includes('CBE') ? CBE_SUBJECTS : CAMBRIDGE_SUBJECTS ).map(sub => (
+                      {( (currentSchool?.curriculum ?? 'CBE').includes('CBE') 
+                          ? CBE_SUBJECTS 
+                          : (currentSchool?.curriculum ?? '').includes('844') 
+                            ? KENYAN_844_SUBJECTS 
+                            : CAMBRIDGE_SUBJECTS 
+                      ).map(sub => (
                         <option key={sub} value={sub}>{sub}</option>
                       ))}
                       <option value="custom_subject">✎ Write Custom Subject...</option>
