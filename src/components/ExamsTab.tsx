@@ -17,6 +17,7 @@ import {
   Info
 } from 'lucide-react';
 import { ExamSchedule, PortalNotification } from '../types';
+import { CBE_SUBJECTS, CAMBRIDGE_SUBJECTS } from '../utils/theme';
 
 export default function ExamsTab() {
   const {
@@ -207,17 +208,38 @@ export default function ExamsTab() {
               </div>
             ) : (
               <form onSubmit={handleFormSubmit} className="space-y-4">
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1">Subject / Paper</label>
-                  <input
-                    id="exam-subject-input"
-                    type="text"
-                    required
-                    placeholder="e.g. Science Part 1 (Chemistry)"
-                    value={subject}
-                    onChange={(e) => setSubject(e.target.value)}
-                    className="w-full text-sm bg-gray-50 border border-gray-300 rounded-lg px-3.5 py-2 text-gray-900 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all outline-none"
-                  />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1">Subject Selection</label>
+                    <select
+                      value={CBE_SUBJECTS.includes(subject) || CAMBRIDGE_SUBJECTS.includes(subject) ? subject : (subject ? 'custom_subject' : '')}
+                      onChange={e => {
+                        if (e.target.value !== 'custom_subject') {
+                          setSubject(e.target.value);
+                        }
+                      }}
+                      className="w-full text-sm bg-gray-50 border border-gray-300 rounded-lg px-2.5 py-2 text-gray-900 focus:ring-emerald-500 outline-none font-semibold cursor-pointer"
+                      required
+                    >
+                      <option value="">-- Choose Subject --</option>
+                      {( (currentSchool?.curriculum ?? 'CBE').includes('CBE') ? CBE_SUBJECTS : CAMBRIDGE_SUBJECTS ).map(sub => (
+                        <option key={sub} value={sub}>{sub}</option>
+                      ))}
+                      <option value="custom_subject">✎ Write Custom Subject...</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1">Custom Subject / Paper Designation</label>
+                    <input
+                      id="exam-subject-input"
+                      type="text"
+                      required
+                      placeholder="Type custom subject or paper (e.g. Paper 1 Theory)"
+                      value={subject}
+                      onChange={(e) => setSubject(e.target.value)}
+                      className="w-full text-sm bg-gray-50 border border-gray-300 rounded-lg px-3.5 py-2 text-gray-900 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all outline-none"
+                    />
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">

@@ -74,6 +74,8 @@ interface AppContextType {
   setActiveSchoolId: (id: string) => void;
   activeTab: 'dashboard' | 'schools' | 'students' | 'staff' | 'classes' | 'attendance' | 'fees' | 'exams';
   setActiveTab: (tab: any) => void;
+  customizingSchoolId: string | null;
+  setCustomizingSchoolId: (id: string | null) => void;
 
   examSchedules: ExamSchedule[];
   portalNotifications: PortalNotification[];
@@ -256,6 +258,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // School selectors & navigation trackers
   const [activeSchoolId, setActiveSchoolId] = useState<string>('');
   const [activeTab, setActiveTab ] = useState<'dashboard' | 'schools' | 'students' | 'staff' | 'classes' | 'attendance' | 'fees' | 'exams'>('dashboard');
+  const [customizingSchoolId, setCustomizingSchoolId] = useState<string | null>(null);
 
   // Dialog triggers
   const [showSchoolModal, setShowSchoolModal] = useState<boolean>(false);
@@ -1147,6 +1150,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       handleLinkStaffToSchool,
       activeSchoolId, setActiveSchoolId,
       activeTab, setActiveTab,
+      customizingSchoolId, setCustomizingSchoolId,
       showSchoolModal, setShowSchoolModal,
       showStudentModal, setShowStudentModal,
       showStaffModal, setShowStaffModal,

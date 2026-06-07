@@ -23,6 +23,7 @@ import {
   GraduationCap
 } from 'lucide-react';
 import { Student, Assessment, StudentGrade } from '../types';
+import { CBE_SUBJECTS } from '../utils/theme';
 
 interface CbeAnalyticsChartProps {
   students: Student[];
@@ -263,12 +264,18 @@ export default function CbeAnalyticsChart({
             <select
               value={selectedSubject}
               onChange={e => setSelectedSubject(e.target.value)}
-              className="bg-transparent focus:outline-none cursor-pointer pr-1"
+              className="bg-transparent focus:outline-none cursor-pointer pr-1 fill-none"
             >
-              <option value="All">All Disciplines</option>
-              <option value="Science">Science Strand</option>
-              <option value="Kiswahili">Kiswahili</option>
-              <option value="Mathematics">Mathematics</option>
+              <option value="All">All Subjects</option>
+              {CBE_SUBJECTS.map((subj) => {
+                let normSubj = subj;
+                if (subj === "Integrated Science") normSubj = "Science";
+                if (subj === "Kiswahili Lugha") normSubj = "Kiswahili";
+                if (subj === "Creative Arts & Sports") normSubj = "CreativeArts";
+                return (
+                  <option key={subj} value={normSubj}>{subj}</option>
+                );
+              })}
             </select>
           </div>
 

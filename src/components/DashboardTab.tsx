@@ -16,11 +16,13 @@ import {
   Bus,
   Home,
   Shield,
-  Clock
+  Clock,
+  Paintbrush
 } from 'lucide-react';
 import { School, Student, Staff, SchoolClass, FeeRecord, StudentGrade, AttendanceRecord, Assessment } from '../types';
 import CbeAnalyticsChart from './CbeAnalyticsChart';
 import { getThemePalette } from '../utils/theme';
+import { useAppContext } from '../context/AppContext';
 
 interface DashboardTabProps {
   schools: School[];
@@ -53,6 +55,7 @@ export default function DashboardTab({
   selectedTeacherId = 'staff-1',
   selectedStudentId = '1'
 }: DashboardTabProps) {
+  const { setCustomizingSchoolId, setActiveTab } = useAppContext();
   const activeSchool = schools.find(s => s.id === activeSchoolId);
   const schPalette = getThemePalette(activeSchool?.themeColor);
 
@@ -636,6 +639,19 @@ export default function DashboardTab({
             Running <strong>{activeSchool.curriculum}</strong> framework. Terminal code: {activeSchool.code}
           </p>
         </div>
+
+        {userRole === 'super_admin' && (
+          <button
+            onClick={() => {
+              setCustomizingSchoolId(activeSchool.id);
+              setActiveTab('schools');
+            }}
+            className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs rounded-xl shadow-xs transition-all cursor-pointer grow-0 shrink-0 self-start sm:self-auto"
+          >
+            <Paintbrush className="w-4.5 h-4.5" />
+            <span>Customise & Brand Layout</span>
+          </button>
+        )}
       </div>
 
       {/* Bento Stats Row */}

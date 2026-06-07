@@ -107,3 +107,40 @@ export const getThemePalette = (color?: string): ThemePalette => {
       };
   }
 };
+
+export const CBE_SUBJECTS = [
+  "Mathematics",
+  "English Language",
+  "Kiswahili Lugha",
+  "Integrated Science",
+  "Social Studies",
+  "Agriculture & Nutrition",
+  "Creative Arts & Sports",
+  "Christian Religious Education (CRE)",
+  "Islamic Religious Education (IRE)",
+  "Hindu Religious Education (HRE)",
+  "Pre-Technical Studies",
+  "Health Education",
+  "Computer Science / Digital Literacy"
+];
+
+export const CAMBRIDGE_SUBJECTS = [
+  "Mathematics",
+  "English Language",
+  "English Literature",
+  "Biology",
+  "Chemistry",
+  "Physics",
+  "Computer Science / ICT",
+  "History",
+  "Geography",
+  "Global Perspectives",
+  "Art & Design",
+  "Music & Drama",
+  "Business Studies",
+  "Economics",
+  "French",
+  "German",
+  "Spanish"
+];
+

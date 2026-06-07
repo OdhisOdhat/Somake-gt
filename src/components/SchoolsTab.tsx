@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Building, 
@@ -13,7 +13,8 @@ import {
   X, 
   PhoneCall, 
   Mail, 
-  MapPin 
+  MapPin,
+  Paintbrush
 } from 'lucide-react';
 import { School } from '../types';
 import { downloadSchoolTemplate } from '../utils/templateGenerator';
@@ -38,7 +39,7 @@ export default function SchoolsTab({
   onDeleteSchool
 }: SchoolsTabProps) {
   const navigate = useNavigate();
-  const { userRole, staff, selectedTeacherId, handleUpdateSchoolProfile, showToast } = useAppContext();
+  const { userRole, staff, selectedTeacherId, handleUpdateSchoolProfile, showToast, customizingSchoolId, setCustomizingSchoolId } = useAppContext();
 
   const isSuperAdmin = userRole === 'super_admin';
   const activeTeacherProfile = staff?.find(st => st.id === selectedTeacherId);
@@ -70,6 +71,16 @@ export default function SchoolsTab({
       themeColor: sch.themeColor || 'indigo'
     });
   };
+
+  // Watch for active deep linked brand request
+  useEffect(() => {
+    if (customizingSchoolId && schools.length > 0) {
+      const sch = schools.find(s => s.id === customizingSchoolId);
+      if (sch) {
+        startEditSchool(sch);
+      }
+    }
+  }, [customizingSchoolId, schools]);
 
   const handleLogoFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -118,6 +129,13 @@ export default function SchoolsTab({
     }
   };
 
+  const closeCustomiseModal = () => {
+    setEditingSchool(null);
+    if (setCustomizingSchoolId) {
+      setCustomizingSchoolId(null);
+    }
+  };
+
   const handleSaveEdit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingSchool) return;
@@ -126,7 +144,7 @@ export default function SchoolsTab({
       return;
     }
     handleUpdateSchoolProfile(editingSchool.id, editForm);
-    setEditingSchool(null);
+    closeCustomiseModal();
   };
 
   return (
@@ -279,10 +297,11 @@ export default function SchoolsTab({
                     {canCustomizeSchool && (
                       <button
                         onClick={() => startEditSchool(sch)}
-                        className="p-2 border border-indigo-150 text-indigo-600 hover:text-white hover:bg-indigo-600 rounded-xl transition-all cursor-pointer"
-                        title="Customize School Profile"
+                        className="flex items-center gap-1.5 px-3 py-2 border border-indigo-150 text-indigo-650 hover:text-white hover:bg-indigo-600 rounded-xl transition-all cursor-pointer font-bold"
+                        title="Customize School Profile & Brand"
                       >
-                        <Edit3 className="w-3.5 h-3.5" />
+                        <Paintbrush className="w-3.5 h-3.5" />
+                        <span>Customise</span>
                       </button>
                     )}
 
@@ -313,7 +332,7 @@ export default function SchoolsTab({
         <div id="modal-customize-school" className="fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white border border-slate-200 rounded-3xl w-full max-w-lg shadow-2xl p-6 relative animate-in fade-in zoom-in-95 duration-200">
             <button
-              onClick={() => setEditingSchool(null)}
+              onClick={closeCustomiseModal}
               className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-1.5 hover:bg-slate-100 rounded-lg transition-all"
               type="button"
             >
