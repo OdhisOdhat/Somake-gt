@@ -175,7 +175,7 @@ ${activeSchool?.name || 'Skoola'}`;
             <span className="p-1 px-2 rounded-lg bg-emerald-50 text-emerald-700 font-black text-[10px] uppercase border border-emerald-100">
               {userRole === 'parent_student' ? 'Parent & Student Portal' : 'Admin Billings'}
             </span>
-            <h2 className="text-xl font-black text-[#1e1b4b] tracking-tight">
+            <h2 className="text-xl font-black text-slate-900 tracking-tight">
               {userRole === 'parent_student' ? 'Authorized Fee Statement' : 'Fees & Accounts Invoicing'}
             </h2>
           </div>
@@ -227,7 +227,7 @@ ${activeSchool?.name || 'Skoola'}`;
               placeholder="Search by student name or admission number..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full text-xs pl-8 pr-3 py-2.5 bg-[#f8fafc] border border-slate-200 focus:border-indigo-500 rounded-xl focus:outline-none focus:ring-1 focus:ring-indigo-500 font-semibold"
+              className="w-full text-xs pl-8 pr-3 py-2.5 bg-slate-50 border border-slate-200 focus:border-indigo-500 rounded-xl focus:outline-none focus:ring-1 focus:ring-indigo-500 font-semibold"
             />
             <div className="absolute left-2.5 top-3.5 text-slate-400">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
@@ -244,7 +244,7 @@ ${activeSchool?.name || 'Skoola'}`;
                 onClick={() => setStatusFilter(filter)}
                 className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all ${
                   statusFilter === filter
-                    ? 'bg-[#1e1b4b] text-white shadow-sm'
+                    ? 'bg-[#1e1b4b] text-truewhite shadow-sm'
                     : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
                 }`}
               >
@@ -271,7 +271,7 @@ ${activeSchool?.name || 'Skoola'}`;
       ) : (
         <div className="bg-white border border-slate-200 rounded-2xl overflow-x-auto overflow-y-auto max-h-[550px] shadow-sm animate-in fade-in duration-200 relative">
           <table className="w-full text-left text-xs whitespace-nowrap">
-            <thead className="sticky top-0 bg-[#f8fafc] text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-200 font-sans z-10 shadow-[inset_0_-1px_0_#e2e8f0]">
+            <thead className="sticky top-0 bg-slate-50 text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-200 font-sans z-10 shadow-[inset_0_-1px_0_#e2e8f0]">
               <tr>
                 <th className="px-5 py-3.5">Admission Number</th>
                 <th className="px-5 py-3.5">Pupil Profile Name</th>
@@ -427,7 +427,7 @@ ${activeSchool?.name || 'Skoola'}`;
                       placeholder="parent@example.com"
                       value={reminderEmail}
                       onChange={e => setReminderEmail(e.target.value)}
-                      className="w-full p-2.5 bg-[#f8fafc] border border-slate-200 rounded-xl focus:border-indigo-500 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 font-bold"
+                      className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:border-indigo-500 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 font-bold"
                     />
                   </div>
 
@@ -438,7 +438,7 @@ ${activeSchool?.name || 'Skoola'}`;
                       required
                       value={reminderSubject}
                       onChange={e => setReminderSubject(e.target.value)}
-                      className="w-full p-2.5 bg-[#f8fafc] border border-slate-200 rounded-xl focus:border-indigo-500 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 font-bold"
+                      className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:border-indigo-500 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 font-bold"
                     />
                   </div>
 
@@ -449,7 +449,7 @@ ${activeSchool?.name || 'Skoola'}`;
                       rows={12}
                       value={reminderBody}
                       onChange={e => setReminderBody(e.target.value)}
-                      className="w-full p-3 bg-[#f8fafc] border border-slate-200 rounded-xl focus:border-indigo-500 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 font-medium font-mono leading-relaxed"
+                      className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-indigo-500 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 font-medium font-mono leading-relaxed"
                     />
                   </div>
 

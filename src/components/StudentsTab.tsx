@@ -1052,7 +1052,7 @@ export default function StudentsTab({
                     placeholder="e.g. Jabari Omwamba"
                     value={editForm.name}
                     onChange={e => setEditForm({ ...editForm, name: e.target.value })}
-                    className="w-full p-2.5 bg-[#f8fafc] border border-slate-200 rounded-xl focus:border-indigo-500 font-bold"
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:border-indigo-500 font-bold"
                   />
                 </div>
 
@@ -1061,7 +1061,7 @@ export default function StudentsTab({
                   <select
                     value={editForm.gender}
                     onChange={e => setEditForm({ ...editForm, gender: e.target.value as any })}
-                    className="w-full p-2.5 bg-[#f8fafc] border border-slate-200 rounded-xl font-bold"
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold"
                   >
                     <option value="Male">Male</option>
                     <option value="Female">Female</option>
@@ -1073,7 +1073,7 @@ export default function StudentsTab({
                   <select
                     value={editForm.gradeLevel}
                     onChange={e => setEditForm({ ...editForm, gradeLevel: e.target.value })}
-                    className="w-full p-2.5 bg-[#f8fafc] border border-slate-200 rounded-xl font-bold"
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold"
                   >
                     {(!activeSchool || activeSchool.curriculum.includes('CBE')) && (
                       <>
@@ -1105,7 +1105,7 @@ export default function StudentsTab({
                   <select
                     value={editForm.boardingStatus}
                     onChange={e => setEditForm({ ...editForm, boardingStatus: e.target.value as any })}
-                    className="w-full p-2.5 bg-[#f8fafc] border border-slate-200 rounded-xl font-bold"
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold"
                   >
                     <option value="Day">Day Commuter Scholar</option>
                     <option value="Boarder">Full Boarding Resident</option>
@@ -1118,7 +1118,7 @@ export default function StudentsTab({
                     <select
                       value={editForm.dormitoryId}
                       onChange={e => setEditForm({ ...editForm, dormitoryId: e.target.value })}
-                      className="w-full p-2.5 bg-[#f8fafc] border border-slate-200 rounded-xl font-bold"
+                      className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold"
                     >
                       <option value="dorm-elgon">Elgon House (Boys)</option>
                       <option value="dorm-kili">Kilimanjaro House (Girls)</option>
@@ -1130,7 +1130,7 @@ export default function StudentsTab({
                     <select
                       value={editForm.busRouteId}
                       onChange={e => setEditForm({ ...editForm, busRouteId: e.target.value })}
-                      className="w-full p-2.5 bg-[#f8fafc] border border-slate-200 rounded-xl font-bold"
+                      className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold"
                     >
                       <option value="route-a">Westlands / Kilimani Shuttle</option>
                       <option value="route-b">Karen / Langata Express</option>
@@ -1145,7 +1145,7 @@ export default function StudentsTab({
                     placeholder="parent@example.com"
                     value={editForm.parentEmail}
                     onChange={e => setEditForm({ ...editForm, parentEmail: e.target.value })}
-                    className="w-full p-2.5 bg-[#f8fafc] border border-slate-200 rounded-xl font-bold"
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold"
                   />
                 </div>
 
@@ -1156,7 +1156,7 @@ export default function StudentsTab({
                     placeholder="e.g. 0712345678"
                     value={editForm.parentPhone}
                     onChange={e => setEditForm({ ...editForm, parentPhone: e.target.value })}
-                    className="w-full p-2.5 bg-[#f8fafc] border border-slate-200 rounded-xl font-bold"
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold"
                   />
                 </div>
               </div>

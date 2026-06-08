@@ -99,8 +99,8 @@ export default function SkoolaSidebar({
           }}
           className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-left text-xs font-semibold transition-all shadow-sm ${
             canSwitchSchools 
-              ? 'bg-[#f8fafc]/80 border border-slate-200 hover:border-slate-300 text-slate-700 cursor-pointer' 
-              : 'bg-slate-50 border border-slate-150 text-slate-400 cursor-not-allowed'
+              ? 'bg-slate-100/80 border border-slate-200 hover:border-slate-305 text-slate-700 cursor-pointer' 
+              : 'bg-slate-50 border border-slate-200 text-slate-400 cursor-not-allowed'
           }`}
         >
           <span className="truncate flex items-center gap-1.5 font-bold">

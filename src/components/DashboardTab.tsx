@@ -64,7 +64,7 @@ export default function DashboardTab({
     return (
       <div id="no-school-dashboard-view" className="space-y-6">
         <div>
-          <h2 className="text-2xl font-black text-[#1e1b4b] tracking-tight">Welcome to Skoola</h2>
+          <h2 className="text-2xl font-black text-slate-900 tracking-tight">Welcome to Skoola</h2>
           <p className="text-xs text-slate-500 mt-1">Multi-school administration, CBA registries and student learning portfolios.</p>
         </div>
 
@@ -187,7 +187,7 @@ export default function DashboardTab({
                 <span className="font-bold text-slate-400">Grade Level:</span>
                 <span className="font-extrabold text-slate-800">{selectedStudent.gradeLevel}</span>
               </div>
-              <div className="flex justify-between items-center bg-[#f8fafc] p-2.5 rounded-xl border border-slate-150">
+              <div className="flex justify-between items-center bg-slate-50 p-2.5 rounded-xl border border-slate-150">
                 <div className="text-[10px] text-slate-450 font-bold">Gender & Stay:</div>
                 <div className="text-[11px] font-black text-slate-800">{selectedStudent.gender} | {selectedStudent.boardingStatus}</div>
               </div>
@@ -361,7 +361,7 @@ export default function DashboardTab({
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {studentGrades.map((g, index) => (
-                <div key={index} className="p-4 bg-[#f8fafc] border border-slate-200 rounded-xl space-y-2.5">
+                <div key={index} className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-2.5">
                   <div className="flex justify-between items-start">
                     <div>
                       <h4 className="text-xs font-black text-slate-900">Task Strand: {g.assessmentId}</h4>
@@ -622,7 +622,7 @@ export default function DashboardTab({
       {/* Welcome Board */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl font-black text-[#1e1b4b] tracking-tight flex items-center gap-1.5 leading-none">
+          <h2 className="text-xl font-black text-slate-900 tracking-tight flex items-center gap-1.5 leading-none">
             {activeSchool.name} 
             <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full animate-pulse transition-all ${
               schPalette.badge
@@ -782,7 +782,7 @@ export default function DashboardTab({
               </div>
 
               <div id="cambridge-analytics-panel" className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="p-4 rounded-xl border border-slate-200 bg-[#f8fafc] text-center flex flex-col justify-center items-center">
+                <div className="p-4 rounded-xl border border-slate-200 bg-slate-50 text-center flex flex-col justify-center items-center">
                   <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Average Cambridge Score</span>
                   <span className="text-4xl font-black text-sky-600 mt-2 font-mono">
                     {cambridgeScores.average}%

@@ -153,7 +153,7 @@ export default function SchoolsTab({
       {/* Header bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl font-black text-[#1e1b4b] tracking-tight">Schools</h2>
+          <h2 className="text-xl font-black text-slate-900 tracking-tight">Schools</h2>
           <p className="text-xs text-slate-500 mt-0.5">Customize, select, and manage schools in your network</p>
         </div>
 
@@ -340,7 +340,7 @@ export default function SchoolsTab({
             </button>
 
             <div className="space-y-1 mb-5 text-left">
-              <h3 className="text-base font-black text-[#1e1b4b] flex items-center gap-2">
+              <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
                 <Building className="w-5 h-5 text-indigo-600" /> Customize School Profile
               </h3>
               <p className="text-xs text-slate-500 font-medium">Update brand identity, logo, and address for <span className="font-extrabold text-slate-700">{editingSchool.name}</span>.</p>

@@ -77,7 +77,7 @@ export default function AttendanceTab({
       {/* Header bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-3">
         <div>
-          <h2 className="text-xl font-black text-[#1e1b4b] tracking-tight text-slate-900">Attendance Ledger</h2>
+          <h2 className="text-xl font-black text-slate-900 tracking-tight">Attendance Ledger</h2>
           <p className="text-xs text-slate-500 mt-0.5">Mark daily registers to monitor classroom statistics</p>
         </div>
 
@@ -127,7 +127,7 @@ export default function AttendanceTab({
       ) : (
         <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
           <table className="w-full text-left text-xs text-slate-705 font-medium whitespace-nowrap">
-            <thead className="bg-[#f8fafc] text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-200">
+            <thead className="bg-slate-50 text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-200">
               <tr>
                 <th className="px-5 py-3.5">Admission Number</th>
                 <th className="px-5 py-3.5">Pupil Profile Name</th>

@@ -285,7 +285,7 @@ export default function CbeAnalyticsChart({
               onClick={() => setMetricView('index')}
               className={`px-2.5 py-1 rounded-lg text-[11px] font-black tracking-wide transition-all ${
                 metricView === 'index'
-                  ? 'bg-[#1e1b4b] text-white shadow-xs'
+                  ? 'bg-[#1e1b4b] text-truewhite shadow-xs'
                   : 'text-slate-500 hover:text-slate-800'
               }`}
             >
@@ -295,7 +295,7 @@ export default function CbeAnalyticsChart({
               onClick={() => setMetricView('percentage')}
               className={`px-2.5 py-1 rounded-lg text-[11px] font-black tracking-wide transition-all ${
                 metricView === 'percentage'
-                  ? 'bg-[#1e1b4b] text-white shadow-xs'
+                  ? 'bg-[#1e1b4b] text-truewhite shadow-xs'
                   : 'text-slate-500 hover:text-slate-800'
               }`}
             >
@@ -317,7 +317,7 @@ export default function CbeAnalyticsChart({
           </div>
           <div className="mt-3">
             <div className="flex items-baseline gap-1.5">
-              <span className="text-3xl font-black text-[#1e1b4b] font-mono">
+              <span className="text-3xl font-black text-slate-900 font-mono">
                 {metricView === 'index' ? activeRatingMetric : `${Math.round((activeRatingMetric / 4) * 100)}%`}
               </span>
               <span className="text-[10px] font-bold text-slate-400">/ {metricView === 'index' ? '4.00 max' : '100%'}</span>

@@ -513,8 +513,8 @@ export default function MainLayout() {
                   }}
                   className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all ${
                     userRole === 'super_admin'
-                      ? 'bg-indigo-600 text-white shadow-md font-extrabold'
-                      : 'bg-[#1e293b] text-slate-300 hover:bg-[#2e3e56]'
+                      ? 'bg-indigo-600 text-truewhite shadow-md font-extrabold'
+                      : 'bg-slate-800 text-slate-205 hover:bg-slate-700 dark:bg-slate-100 dark:text-slate-700 dark:hover:bg-slate-200'
                   }`}
                 >
                   👑 School Principal
@@ -526,8 +526,8 @@ export default function MainLayout() {
                   }}
                   className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all ${
                     userRole === 'teacher'
-                      ? 'bg-indigo-600 text-white shadow-md font-extrabold'
-                      : 'bg-[#1e293b] text-slate-300 hover:bg-[#2e3e56]'
+                      ? 'bg-indigo-600 text-truewhite shadow-md font-extrabold'
+                      : 'bg-slate-800 text-slate-205 hover:bg-slate-700 dark:bg-slate-100 dark:text-slate-700 dark:hover:bg-slate-200'
                   }`}
                 >
                   🧑‍🏫 Classroom Teacher
@@ -543,8 +543,8 @@ export default function MainLayout() {
                   }}
                   className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all ${
                     userRole === 'parent_student'
-                      ? 'bg-indigo-600 text-white shadow-md font-extrabold'
-                      : 'bg-[#1e293b] text-slate-300 hover:bg-[#2e3e56]'
+                      ? 'bg-indigo-600 text-truewhite shadow-md font-extrabold'
+                      : 'bg-slate-800 text-slate-205 hover:bg-slate-700 dark:bg-slate-100 dark:text-slate-700 dark:hover:bg-slate-200'
                   }`}
                 >
                   🏡 Parent / Student
@@ -569,7 +569,7 @@ export default function MainLayout() {
                       setActiveSchoolId(s.schoolId);
                     }
                   }}
-                  className="p-1.5 border border-slate-200 bg-[#f8fafc] rounded-lg font-black text-xs text-slate-800 focus:outline-none focus:border-indigo-500 cursor-pointer"
+                  className="p-1.5 border border-slate-200 bg-slate-50 rounded-lg font-black text-xs text-slate-800 focus:outline-none focus:border-indigo-500 cursor-pointer"
                 >
                   {staff.map(st => (
                     <option key={st.id} value={st.id}>{st.name} ({st.role})</option>
@@ -591,7 +591,7 @@ export default function MainLayout() {
                     const s = students.find(st => st.id === e.target.value);
                     showToast(`Simulating Parent of ${s?.name || ''}`);
                   }}
-                  className="p-1.5 border border-slate-200 bg-[#f8fafc] rounded-lg font-black text-xs text-slate-800 focus:outline-none focus:border-indigo-500 cursor-pointer"
+                  className="p-1.5 border border-slate-200 bg-slate-50 rounded-lg font-black text-xs text-slate-800 focus:outline-none focus:border-indigo-500 cursor-pointer"
                 >
                   {students.map(st => (
                     <option key={st.id} value={st.id}>{st.name} ({st.gradeLevel})</option>
@@ -732,7 +732,7 @@ export default function MainLayout() {
                     placeholder="e.g. Hillcrest Primary School"
                     value={schoolForm.name}
                     onChange={e => setSchoolForm({ ...schoolForm, name: e.target.value })}
-                    className="w-full p-2.5 bg-[#f8fafc] border border-slate-200 rounded-xl focus:border-indigo-500 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 font-bold"
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:border-indigo-500 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 font-bold"
                   />
                 </div>
 
@@ -744,7 +744,7 @@ export default function MainLayout() {
                     placeholder="e.g. HIL-005"
                     value={schoolForm.code}
                     onChange={e => setSchoolForm({ ...schoolForm, code: e.target.value })}
-                    className="w-full p-2.5 bg-[#f8fafc] border border-slate-200 rounded-xl focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-mono font-bold"
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-mono font-bold"
                   />
                 </div>
 
@@ -753,7 +753,7 @@ export default function MainLayout() {
                   <select
                     value={schoolForm.curriculum}
                     onChange={e => setSchoolForm({ ...schoolForm, curriculum: e.target.value })}
-                    className="w-full p-2.5 bg-[#f8fafc] border border-slate-200 rounded-xl focus:border-indigo-500 font-bold"
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:border-indigo-500 font-bold"
                   >
                     <option value="CBE (Kenya)">CBE (Kenya)</option>
                     <option value="Cambridge (International)">Cambridge (International)</option>
@@ -768,7 +768,7 @@ export default function MainLayout() {
                     placeholder="e.g. 0711000999"
                     value={schoolForm.phone}
                     onChange={e => setSchoolForm({ ...schoolForm, phone: e.target.value })}
-                    className="w-full p-2.5 bg-[#f8fafc] border border-slate-200 rounded-xl focus:border-indigo-500 font-bold"
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:border-indigo-500 font-bold"
                   />
                 </div>
 
@@ -779,7 +779,7 @@ export default function MainLayout() {
                     placeholder="e.g. registrar@hillcrest.edu"
                     value={schoolForm.email}
                     onChange={e => setSchoolForm({ ...schoolForm, email: e.target.value })}
-                    className="w-full p-2.5 bg-[#f8fafc] border border-slate-200 rounded-xl focus:border-indigo-500 font-bold"
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:border-indigo-500 font-bold"
                   />
                 </div>
 
@@ -790,7 +790,7 @@ export default function MainLayout() {
                     placeholder="e.g. Ngong Road, Nairobi"
                     value={schoolForm.address}
                     onChange={e => setSchoolForm({ ...schoolForm, address: e.target.value })}
-                    className="w-full p-2.5 bg-[#f8fafc] border border-slate-200 rounded-xl focus:border-indigo-500 font-bold"
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:border-indigo-500 font-bold"
                   />
                 </div>
               </div>
@@ -836,7 +836,7 @@ export default function MainLayout() {
                     placeholder="e.g. Jabari Omwamba"
                     value={studentForm.name}
                     onChange={e => setStudentForm({ ...studentForm, name: e.target.value })}
-                    className="w-full p-2.5 bg-[#f8fafc] border border-slate-200 rounded-xl focus:border-indigo-500 font-bold"
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:border-indigo-500 font-bold"
                   />
                 </div>
 
@@ -845,7 +845,7 @@ export default function MainLayout() {
                   <select
                     value={studentForm.gender}
                     onChange={e => setStudentForm({ ...studentForm, gender: e.target.value as any })}
-                    className="w-full p-2.5 bg-[#f8fafc] border border-slate-200 rounded-xl font-bold"
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold"
                   >
                     <option value="Male">Male</option>
                     <option value="Female">Female</option>
@@ -857,7 +857,7 @@ export default function MainLayout() {
                   <select
                     value={studentForm.gradeLevel}
                     onChange={e => setStudentForm({ ...studentForm, gradeLevel: e.target.value })}
-                    className="w-full p-2.5 bg-[#f8fafc] border border-slate-200 rounded-xl font-bold"
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold"
                   >
                     {(!activeSchool || activeSchool.curriculum.includes('CBE')) && (
                       <>
@@ -889,7 +889,7 @@ export default function MainLayout() {
                   <select
                     value={studentForm.boardingStatus}
                     onChange={e => setStudentForm({ ...studentForm, boardingStatus: e.target.value as any })}
-                    className="w-full p-2.5 bg-[#f8fafc] border border-slate-200 rounded-xl font-bold"
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold"
                   >
                     <option value="Day">Day Commuter Scholar</option>
                     <option value="Boarder">Full Boarding Resident</option>
@@ -902,7 +902,7 @@ export default function MainLayout() {
                     <select
                       value={studentForm.dormitoryId}
                       onChange={e => setStudentForm({ ...studentForm, dormitoryId: e.target.value })}
-                      className="w-full p-2.5 bg-[#f8fafc] border border-slate-200 rounded-xl font-bold"
+                      className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold"
                     >
                       <option value="dorm-elgon">Elgon House (Boys)</option>
                       <option value="dorm-kili">Kilimanjaro House (Girls)</option>
@@ -914,7 +914,7 @@ export default function MainLayout() {
                     <select
                       value={studentForm.busRouteId}
                       onChange={e => setStudentForm({ ...studentForm, busRouteId: e.target.value })}
-                      className="w-full p-2.5 bg-[#f8fafc] border border-slate-200 rounded-xl font-bold"
+                      className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold"
                     >
                       <option value="route-a">Westlands / Kilimani Shuttle</option>
                       <option value="route-b">Karen / Langata Express</option>
@@ -929,7 +929,7 @@ export default function MainLayout() {
                     placeholder="parent@example.com"
                     value={studentForm.parentEmail}
                     onChange={e => setStudentForm({ ...studentForm, parentEmail: e.target.value })}
-                    className="w-full p-2.5 bg-[#f8fafc] border border-slate-200 rounded-xl font-bold"
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold"
                   />
                 </div>
 
@@ -940,7 +940,7 @@ export default function MainLayout() {
                     placeholder="e.g. 0712345678"
                     value={studentForm.parentPhone}
                     onChange={e => setStudentForm({ ...studentForm, parentPhone: e.target.value })}
-                    className="w-full p-2.5 bg-[#f8fafc] border border-slate-200 rounded-xl font-bold"
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold"
                   />
                 </div>
               </div>
@@ -985,7 +985,7 @@ export default function MainLayout() {
                   placeholder="e.g. Kiprop Kipruto"
                   value={staffForm.name}
                   onChange={e => setStaffForm({ ...staffForm, name: e.target.value })}
-                  className="w-full p-2.5 bg-[#f8fafc] border border-slate-200 rounded-xl focus:border-indigo-500 font-bold"
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:border-indigo-500 font-bold"
                 />
               </div>
 
@@ -994,7 +994,7 @@ export default function MainLayout() {
                 <select
                   value={staffForm.role}
                   onChange={e => setStaffForm({ ...staffForm, role: e.target.value as any })}
-                  className="w-full p-2.5 bg-[#f8fafc] border border-slate-200 rounded-xl font-bold"
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold"
                 >
                   <option value="Teacher">Teacher</option>
                   <option value="Head Teacher">Head Principal</option>
@@ -1058,7 +1058,7 @@ export default function MainLayout() {
                   placeholder="staff@skoola.co.ke"
                   value={staffForm.email}
                   onChange={e => setStaffForm({ ...staffForm, email: e.target.value })}
-                  className="w-full p-2.5 bg-[#f8fafc] border border-slate-200 rounded-xl font-bold"
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold"
                 />
               </div>
 
@@ -1069,7 +1069,7 @@ export default function MainLayout() {
                   placeholder="e.g. 0711999888"
                   value={staffForm.phone}
                   onChange={e => setStaffForm({ ...staffForm, phone: e.target.value })}
-                  className="w-full p-2.5 bg-[#f8fafc] border border-slate-200 rounded-xl font-bold"
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold"
                 />
               </div>
 
@@ -1078,7 +1078,7 @@ export default function MainLayout() {
                 <select
                   value={staffForm.schoolId || activeSchoolId}
                   onChange={e => setStaffForm({ ...staffForm, schoolId: e.target.value })}
-                  className="w-full p-2.5 bg-[#f8fafc] border border-slate-200 rounded-xl font-bold"
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold"
                 >
                   {schools.map(sch => (
                     <option key={sch.id} value={sch.id}>{sch.name}</option>
@@ -1129,7 +1129,7 @@ export default function MainLayout() {
                   placeholder="e.g. Grade 4 West / Year 8 Alpha"
                   value={classForm.name}
                   onChange={e => setClassForm({ ...classForm, name: e.target.value })}
-                  className="w-full p-2.5 bg-[#f8fafc] border border-slate-200 rounded-xl focus:border-indigo-500 font-bold"
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:border-indigo-500 font-bold"
                 />
               </div>
 
@@ -1138,7 +1138,7 @@ export default function MainLayout() {
                 <select
                   value={classForm.teacherId}
                   onChange={e => setClassForm({ ...classForm, teacherId: e.target.value })}
-                  className="w-full p-2.5 bg-[#f8fafc] border border-slate-200 rounded-xl font-bold"
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold"
                 >
                   <option value="">-- No supervisor --</option>
                   {staff.filter(st => st.schoolId === activeSchoolId).map(st => (
@@ -1193,7 +1193,7 @@ export default function MainLayout() {
                   placeholder="e.g. 15000"
                   value={paymentForm.amount}
                   onChange={e => setPaymentForm({ ...paymentForm, amount: e.target.value })}
-                  className="w-full p-2.5 bg-[#f8fafc] border border-slate-200 rounded-xl focus:border-indigo-500 font-bold"
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:border-indigo-500 font-bold"
                 />
               </div>
 
@@ -1204,7 +1204,7 @@ export default function MainLayout() {
                   placeholder="e.g. MPESA-TX8890"
                   value={paymentForm.reference}
                   onChange={e => setPaymentForm({ ...paymentForm, reference: e.target.value })}
-                  className="w-full p-2.5 bg-[#f8fafc] border border-slate-200 rounded-xl focus:border-indigo-500 font-bold font-mono text-xs"
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:border-indigo-500 font-bold font-mono text-xs"
                 />
               </div>
 
@@ -1214,7 +1214,7 @@ export default function MainLayout() {
                   type="date"
                   value={paymentForm.date}
                   onChange={e => setPaymentForm({ ...paymentForm, date: e.target.value })}
-                  className="w-full p-2.5 bg-[#f8fafc] border border-slate-200 rounded-xl focus:border-indigo-500 font-bold"
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:border-indigo-500 font-bold"
                 />
               </div>
 

@@ -154,7 +154,7 @@ export default function StaffTab({
         <div>
           <div className="flex items-center gap-1.5">
             <span className="p-1 px-2 rounded-lg bg-indigo-50 text-indigo-700 font-black text-[10px] uppercase border border-indigo-100">Principal Console</span>
-            <h2 className="text-xl font-black text-[#1e1b4b] tracking-tight">Staff & Faculty Registry</h2>
+            <h2 className="text-xl font-black text-slate-900 tracking-tight">Staff & Faculty Registry</h2>
           </div>
           <p className="text-xs text-slate-500 mt-0.5">Add, coordinate records, and draft formal directives directly to school instructors</p>
         </div>
@@ -389,7 +389,7 @@ export default function StaffTab({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="text-[10px] uppercase font-black text-slate-450 mb-1 block">Staff Role & Placement</label>
-                  <div className="p-2.5 bg-[#f8fafc] border border-slate-200 rounded-xl text-slate-700 font-bold truncate">
+                  <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-705 font-bold truncate">
                     {selectedTeacher.role} ({selectedTeacher.email})
                   </div>
                 </div>
@@ -399,7 +399,7 @@ export default function StaffTab({
                   <select
                     value={draftPurpose}
                     onChange={(e) => setDraftPurpose(e.target.value)}
-                    className="w-full p-2.5 bg-[#f8fafc] border border-slate-200 rounded-xl focus:border-indigo-500 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 font-bold cursor-pointer"
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:border-indigo-500 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 font-bold cursor-pointer"
                   >
                     <option value="Performance Assessment Review">Performance Assessment Review</option>
                     <option value="Lesson Plans & Schemes of Work Request">Lesson Plans & Schemes of Work Request</option>
@@ -419,7 +419,7 @@ export default function StaffTab({
                   placeholder="e.g. Include praise for math projects, set deadline for Term 2 grades by next Friday"
                   value={extraContext}
                   onChange={e => setExtraContext(e.target.value)}
-                  className="w-full p-2.5 bg-[#f8fafc] border border-slate-200 rounded-xl focus:border-indigo-500 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 font-semibold"
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:border-indigo-500 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 font-semibold"
                 />
               </div>
 
